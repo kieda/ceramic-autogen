@@ -4,6 +4,7 @@ package io.hostilerobot.ceramicrelief.collection.bitset;
 /**
  * idea: we have a smaller bitset we can utilize by keeping a "viability window" that can slide around
  * the current maximum capacity is words.length * Long.SIZE
+ * this also permits us to create a mapping from any valid integer to boolean, not just positive integers
  */
 public class OffBitSet implements IBitSet {
     // always equal to the minimum index
@@ -94,13 +95,20 @@ public class OffBitSet implements IBitSet {
         int wordIdx1 = wordIndex(index);
         int wordIdx2 = wordIdx1 + 1; // the next word
 
+        // shift word1 to the left, word2 to the right
+        int shift = (index - offset);
+        int mod64 = shift & 0b111111;
+
         int boundsSwitchMask =
             // first index out of bounds and should be zero
               (wordIdx1 & NEGATIVE_MASK) >> 31  // first index negative
             | ((words.length - wordIdx2) & NEGATIVE_MASK) >> 31 // first index past length
             // second index out of bounds and should be zero
             | (wordIdx2 & NEGATIVE_MASK) >> 30 // second index negative
-            | ((words.length - wordIdx2 - 1) & NEGATIVE_MASK) >> 30; // second index past length
+            | ((words.length - wordIdx2 - 1) & NEGATIVE_MASK) >> 30 // second index past length
+            | ((mod64 | (~mod64 + 1)) & NEGATIVE_MASK) >> 31 // edge case: we want to get the full word at wordIdx1.
+                                                             // we set word2 to 0, and word1 is set to the word.
+            ;
 
         long word1 = 0;
         long word2 = 0;
@@ -113,19 +121,15 @@ public class OffBitSet implements IBitSet {
                 break;
             case 0b01:
                 word1 = words[wordIdx1];
-                word2 = 0;
                 break;
             case 0b10:
-                word1 = 0;
                 word2 = words[wordIdx2];
                 break;
 //            case 0b11:
 //                word1 = word2 = 0;
         }
 
-
-        // shift word1 to the left, word2 to the right
-        int shift = (index - offset);
+        // problem: when shift % 64 == 0. then we will OR both words. We can resolve this with the 0b01 case.
         return word1 << (64 - shift) | word2 >>> shift;
     }
 
@@ -138,4 +142,14 @@ public class OffBitSet implements IBitSet {
         return relative >> POW2_BITS_PER_WORD;
     }
 
+
+    public static void main(String[] args) {
+        long mask = 0xBEEFC0FFEEBEEFDAL;
+        System.out.println(Long.toHexString(mask >>> ((120) & 0b111111)));
+        System.out.println(Long.toHexString(mask << ((64-120) & 0b111111)));
+//        System.out.println(Long.toBinaryString(-1L << 0));
+//        System.out.println(Long.toBinaryString(-1L << 15));
+//        System.out.println(Long.toBinaryString(-1L << 63));
+//        System.out.println(Long.toBinaryString(-1L << 64));
+    }
 }

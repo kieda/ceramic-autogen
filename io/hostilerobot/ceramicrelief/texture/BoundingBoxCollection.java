@@ -38,14 +38,15 @@ public class BoundingBoxCollection<T extends Bounds2D> {
         NavigableMap<Double, Set<Integer>> minsX = xBoundsMin.subMap(other.getMinX(), true, other.getMaxX(), false);
         NavigableMap<Double, Set<Integer>> maxsX = xBoundsMax.subMap(other.getMinX(), false, other.getMaxX(), true);
         BitSet intersections = new BitSet(items.size());
-        for(Set<Integer> indexes : minsX.values()) intersections.;
-        for(Set<Integer> indexes : maxsX.values()) xInBounds.addAll(indexes);
+//        for(Set<Integer> indexes : minsX.values()) intersections.;
+//        for(Set<Integer> indexes : maxsX.values()) xInBounds.addAll(indexes);
 
         NavigableMap<Double, Set<Integer>> minsY = yBoundsMin.subMap(other.getMinY(), true, other.getMaxY(), false);
         NavigableMap<Double, Set<Integer>> maxsY = yBoundsMax.subMap(other.getMinY(), false, other.getMaxY(), true);
         Set<Integer> yInBounds = new HashSet<>(minsY.size() + maxsY.size());
-        for(Set<Integer> indexes : minsX.values()) xInBounds.addAll(indexes);
-        for(Set<Integer> indexes : maxsX.values()) xInBounds.addAll(indexes);
+//        for(Set<Integer> indexes : minsX.values()) xInBounds.addAll(indexes);
+//        for(Set<Integer> indexes : maxsX.values()) xInBounds.addAll(indexes);
+        return null;
     }
 
     public void addElem(T face) {
