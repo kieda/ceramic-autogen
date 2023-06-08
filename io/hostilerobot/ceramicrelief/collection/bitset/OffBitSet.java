@@ -66,7 +66,36 @@ public class OffBitSet implements IBitSet {
 
     @Override
     public void or(IBitSet other) {
+        int thisMin = currentMinIdx;
+        int otherMin = other.getMinIndex();
 
+        int thisMax = currentMaxIdx;
+        int otherMax = other.getMaxIndex();
+
+        // note - new min will be min(thisMin, otherMin), new max will be max(thisMax, otherMax)
+        int maskMin = (thisMin - otherMin) >> 31; // -1 if thisMin < otherMin, 0 otherwise.
+        int newMin = (thisMin & maskMin) | (otherMin & ~maskMin);
+
+        int maskMax = (thisMax - otherMax) >> 31;
+        int newMax = (thisMax & ~maskMax) | (otherMax & maskMax);
+
+
+        // simple, stupid implementation: run from max(thisMin, otherMax) to min(thisMax, otherMax)
+        // and OR each word from other into this one
+        int startIdx = newMin ^ thisMin ^ otherMin; // one of these will cancel out, and will return the max of the two mins
+        int endIdx = newMax ^ thisMax ^ otherMax;   // same logic as above
+
+        int startWordIdx = wordIndex(startIdx);
+        // todo - verify bounds
+        // todo -   * what if index starts at the beginning of a word? What if we increment such that startIdx + 64 == endIdx
+        while(startIdx < endIdx) {
+            words[startWordIdx++] |= other.wordAt(startIdx);
+            startIdx += 64;
+        }
+
+        currentMinIdx = newMin;
+        currentMaxIdx = newMax;
+        // todo - we may need to resize words to fit the entire space.
     }
 
     @Override
@@ -75,6 +104,8 @@ public class OffBitSet implements IBitSet {
             // optimize so we don't just call wordAt a bunch of times.
             OffBitSet otherBs = (OffBitSet) other;
 
+
+        } else {
 
         }
     }
@@ -89,6 +120,19 @@ public class OffBitSet implements IBitSet {
         return currentMaxIdx;
     }
 
+
+    // retrieve a word at a given index, but we do NOT check the bounds
+    private long wordAt_unsafe(int index) {
+        int wordIdx1 = wordIndex(index);
+        int shift = (index - offset);
+        int mod64 = shift & 0b111111;
+        int wordIdx2 = wordIdx1 + 1 +
+                ((mod64 | (~mod64 + 1)) >> 31); // use the same index if (index - offset) % 64 == 0
+                                                // mask is -1 if so, and 0 otherwise
+
+        // when shift % 64 == 0, then we will have words[wordIdx1] | words[wordIdx2] == words[wordIdx1]
+        return words[wordIdx1] << (64 - shift) | words[wordIdx2] >>> shift;
+    }
     @Override
     public long wordAt(int index) {
         // word starts at index and goes till index + 63
@@ -144,9 +188,6 @@ public class OffBitSet implements IBitSet {
 
 
     public static void main(String[] args) {
-        long mask = 0xBEEFC0FFEEBEEFDAL;
-        System.out.println(Long.toHexString(mask >>> ((120) & 0b111111)));
-        System.out.println(Long.toHexString(mask << ((64-120) & 0b111111)));
 //        System.out.println(Long.toBinaryString(-1L << 0));
 //        System.out.println(Long.toBinaryString(-1L << 15));
 //        System.out.println(Long.toBinaryString(-1L << 63));
