@@ -1,5 +1,6 @@
 package io.hostilerobot.ceramicrelief.texture;
 
+import com.github.davidmoten.rtree2.RTree;
 import io.hostilerobot.ceramicrelief.imesh.IMesh;
 import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
@@ -12,6 +13,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.TreeSet;
 
+
+// rather than managing a bunch of stuff for treesets and keeping the bounding boxes this way,
+// we can just use a RTree library. Then I don't have to fix as many bugs
 // essentially represents a texture that
 public class BoundaryTexture {
     private IMesh<? extends Object> backingMesh;
@@ -35,7 +39,9 @@ public class BoundaryTexture {
     private TreeSet<Integer> yBoundsMin;
     private TreeSet<Integer> yBoundsMax;
 
-
+    {
+        new RTree.Builder().factory();
+    }
 
     public BoundaryTexture(IMesh<? extends Object> backingMesh) {
         tFaces = new ArrayList<>();

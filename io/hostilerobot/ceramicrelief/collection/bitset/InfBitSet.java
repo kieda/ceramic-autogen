@@ -2,11 +2,15 @@ package io.hostilerobot.ceramicrelief.collection.bitset;
 
 
 /**
+ * "infinite" bitset, permits us to have a mapping from negative integers to booleans
+ * we do so by keeping an offset that indexes the minimum element of the set
+ * this also utilizes less space than a traditional bitset in most cases, as we don't need to store a series of empty longs
+ *
  * idea: we have a smaller bitset we can utilize by keeping a "viability window" that can slide around
  * the current maximum capacity is words.length * Long.SIZE
  * this also permits us to create a mapping from any valid integer to boolean, not just positive integers
  */
-public class OffBitSet implements IBitSet {
+public class InfBitSet implements IBitSet {
     // always equal to the minimum index
     private final static int POW2_BITS_PER_WORD = 6;
     private final static int BITS_PER_WORD = 1 << POW2_BITS_PER_WORD;
@@ -23,10 +27,10 @@ public class OffBitSet implements IBitSet {
     private long[] words;
 
 
-    public OffBitSet() {
+    public InfBitSet() {
         this(BITS_PER_WORD * 2);
     }
-    public OffBitSet(int currentMaxIdx) {
+    public InfBitSet(int currentMaxIdx) {
         initWords(currentMaxIdx);
     }
 
@@ -61,7 +65,24 @@ public class OffBitSet implements IBitSet {
 
     @Override
     public void set(int index) {
+        int maxValue = offset + words.length << POW2_BITS_PER_WORD;
+        if(maxValue >= index && index >= offset) {
+           // in bounds, do not need to allocate
+            words[wordIndex(index)] |= 1L << (index - offset);
+        } else if(index > maxValue && index <= maxValue + (currentMinIdx - offset)) {
+            // we can do in-place traversal and still be below capacity by taking values from the left
+            // we go from the right hand side to the left hand side
 
+            // what conditions can we have to do it in place without traversing? (System.arrayCopy)
+//            System.arraycopy();
+
+        } else if(index < offset && index >= offset - (maxValue - currentMaxIdx)) {
+            // we can do an in-place traversal and still be below capacity by taking values from the right
+            // we go from the left hand side to the right hand side
+
+        } else {
+            // we need to resize.
+        }
     }
 
     @Override
@@ -88,21 +109,50 @@ public class OffBitSet implements IBitSet {
         int startWordIdx = wordIndex(startIdx);
         // todo - verify bounds
         // todo -   * what if index starts at the beginning of a word? What if we increment such that startIdx + 64 == endIdx
-        while(startIdx < endIdx) {
-            words[startWordIdx++] |= other.wordAt(startIdx);
-            startIdx += 64;
-        }
+//        while(startIdx < endIdx) {
+//            words[startWordIdx++] |= other.wordAt(startIdx);
+//            startIdx += 64;
+//        }
 
         currentMinIdx = newMin;
         currentMaxIdx = newMax;
+
         // todo - we may need to resize words to fit the entire space.
+        // what would the cases look like?
+        int maxCapacity = words.length << POW2_BITS_PER_WORD;
+        if(maxCapacity < newMax - newMin) {
+
+
+            // -> resize. our current capacity will not fit our new capacity.
+            // working out resize logic on paper...
+            if(other.getClass() == InfBitSet.class) {
+                InfBitSet otherBs = (InfBitSet) other;
+                // if we have another bitset we can just snap to the existing 1d grid and so we can just OR each word directly
+
+            } else {
+
+            }
+        }
     }
 
     @Override
     public void and(IBitSet other) {
-        if(other.getClass() == OffBitSet.class) {
+        // we only need to traverse the intersection between this bit set and other
+        int thisMin = currentMinIdx;
+        int otherMin = other.getMinIndex();
+
+        int thisMax = currentMaxIdx;
+        int otherMax = other.getMaxIndex();
+
+        int maskMin = (thisMin - otherMin) >> 31; // -1 if thisMin < otherMin, 0 otherwise.
+        int startIdx = (thisMin & ~maskMin) | (otherMin & maskMin); // max of the two mins
+
+        int maskMax = (thisMax - otherMax) >> 31; // -1 if thisMax < otherMax, 0 otherwise.
+        int endIdx = (thisMax & maskMax) | (otherMax & ~maskMax); // min of the two maxs
+
+        if(other.getClass() == InfBitSet.class) {
             // optimize so we don't just call wordAt a bunch of times.
-            OffBitSet otherBs = (OffBitSet) other;
+            InfBitSet otherBs = (InfBitSet) other;
 
 
         } else {
