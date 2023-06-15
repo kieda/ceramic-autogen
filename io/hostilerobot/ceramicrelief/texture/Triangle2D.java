@@ -12,7 +12,7 @@ import java.util.List;
 // we only really hold precomputed values here useful for intersection testing.
 // this class should not be used to find actual information about the triangle
 // this class also errs on the side that two triangles are NOT intersecting, especially in the case where two triangles share an edge.
-public class Triangle2D implements Geometry {
+public class Triangle2D implements Rectangle {
     // bounding box
     private Rectangle bounds = null;
     // precomputed values utilized in intersection testing
@@ -303,7 +303,58 @@ public class Triangle2D implements Geometry {
     }
 
     @Override
+    public double x1() {
+        return bounds.x1();
+    }
+
+    @Override
+    public double y1() {
+        return bounds.y1();
+    }
+
+    @Override
+    public double x2() {
+        return bounds.x2();
+    }
+
+    @Override
+    public double y2() {
+        return bounds.y2();
+    }
+
+    @Override
+    public double area() {
+        // todo we can use this https://www.cuemath.com/measurement/area-of-triangle-with-3-sides/
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public double intersectionArea(Rectangle r) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public double perimeter() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Rectangle add(Rectangle r) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean contains(double x, double y) {
+        return inTriangle(x, y);
+    }
+
+    @Override
     public boolean isDoublePrecision() {
         return true;
+    }
+
+    @Override
+    public Geometry geometry() {
+        return this;
     }
 }

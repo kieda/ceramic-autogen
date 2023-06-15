@@ -3,6 +3,7 @@ package io.hostilerobot.ceramicrelief.imesh;
 
 import org.apache.commons.math.fraction.Fraction;
 import org.jgrapht.Graph;
+import org.jgrapht.Graphs;
 import org.jgrapht.graph.SimpleGraph;
 
 import java.util.*;
@@ -19,6 +20,7 @@ import java.util.function.BiFunction;
  */
 public class IMesh<ID> {
     public class IMeshEdge {
+        // represents IDs for vertices in the mesh
         private ID v1, v2;
 
         private IMeshEdge(ID v1, ID v2) {
@@ -60,14 +62,66 @@ public class IMesh<ID> {
         }
     }
     public class IMeshFace {
-        private ID v1;
-        private ID v2;
-        private ID v3;
-        private IMeshFace(ID v1, ID v2, ID v3) {
+        // id for the face in the mesh
+        private final ID face;
+        // ids for vertices of the face
+        private final ID v1;
+        private final ID v2;
+        private final ID v3;
+        private IMeshFace(ID face, ID v1, ID v2, ID v3) {
+            this.face = face; // this face's ID
             this.v1 = v1;
             this.v2 = v2;
             this.v3 = v3;
         }
+        public ID getV1() {
+            return v1;
+        }
+
+        public ID getV2() {
+            return v2;
+        }
+
+        public ID getV3() {
+            return v3;
+        }
+        public IVertex3D getVertex1() {
+            return vertices.get(getV1());
+        }
+        public IVertex3D getVertex2() {
+            return vertices.get(getV2());
+        }
+        public IVertex3D getVertex3() {
+            return vertices.get(getV3());
+        }
+        public IMeshEdge getEdge1_2() {
+            return getCachedEdge(getV1(), getV2());
+        }
+        public IMeshEdge getEdge2_3() {
+            return getCachedEdge(getV2(), getV3());
+        }
+        public IMeshEdge getEdge3_1() {
+            return getCachedEdge(getV3(), getV1());
+        }
+
+        private Set<IMeshEdge> outgoing = null;
+        public Set<IMeshEdge> getOutgoingEdges() {
+            if(outgoing == null) {
+                outgoing = meshConnectivity.outgoingEdgesOf(face);
+            }
+            return outgoing;
+        }
+        private List<ID> neighborFaces = null;
+        public List<ID> getNeighborFaces() {
+            if(neighborFaces == null) {
+                neighborFaces = Graphs.neighborListOf(meshConnectivity, face);
+            }
+            return neighborFaces;
+        }
+    }
+
+    public Set<ID> getFaces() {
+        return faces.keySet();
     }
 
     private Map<ID, Map<ID, IMeshEdge>> edgeCache; // cache the existing edges so we'll use the same objects
@@ -80,9 +134,11 @@ public class IMesh<ID> {
         // E: Edge in the mesh, represented by two vertex tags.
 
     public IMesh() {
-        this.vertices = new HashMap<>();
-        this.faces = new HashMap<>();
+        // make the following linked
+        this.vertices = new LinkedHashMap<>();
+        this.faces = new LinkedHashMap<>();
         this.meshConnectivity = new SimpleGraph<>(null, null, false);
+        this.edgeConnectivity = new HashMap<>();
         this.edgeCache = new HashMap<>();
     }
 
@@ -108,6 +164,17 @@ public class IMesh<ID> {
         }
     }
 
+    public Graph<ID, IMeshEdge> getMeshConnectivity() {
+        return meshConnectivity;
+    }
+
+    public IVertex3D getVertex(ID id) {
+        return vertices.get(id);
+    }
+    public IMeshFace getFace(ID id) {
+        return faces.get(id);
+    }
+
     public IMesh<ID> addVertex(ID id, Fraction x, Fraction y, Fraction z) {
         return addVertex(id, new IVertex3D(x, y, z));
     }
@@ -121,7 +188,8 @@ public class IMesh<ID> {
         if(!vertices.containsKey(v1) || !vertices.containsKey(v2) || !vertices.containsKey(v3)) {
             throw new NoSuchElementException("Mesh does not contain all vertices (" + v1 + ", " + v2 + ", " + v3 + ")");
         }
-        faces.put(id, new IMeshFace(v1, v2, v3));
+
+        faces.put(id, new IMeshFace(id, v1, v2, v3));
         meshConnectivity.addVertex(id); // add a vertex for the face.
 
         BiFunction<IMeshEdge, Set<ID>, Set<ID>> addFaceFn = (edge, faces) -> {
