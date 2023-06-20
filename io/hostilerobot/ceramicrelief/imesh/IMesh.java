@@ -1,6 +1,7 @@
 package io.hostilerobot.ceramicrelief.imesh;
 
 
+import io.hostilerobot.ceramicrelief.texture.BoundaryTexture;
 import org.apache.commons.math.fraction.Fraction;
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
@@ -118,6 +119,24 @@ public class IMesh<ID> {
             }
             return neighborFaces;
         }
+
+        // normal that has not (yet) changed to a unit vector
+        public IVertex3D getNormal() {
+            IVertex3D normal;
+
+            if((normal = normals.get(face)) != null) {
+                return normal;
+            } else {
+                IVertex3D len12 = new IVertex3D();
+                IVertex3D len23 = new IVertex3D();
+
+                // return (vertex2 - vertex1) x (vertex3 - vertex2)
+                IVertex3D.subtract(getVertex2(), getVertex1(), len12);
+                IVertex3D.subtract(getVertex3(), getVertex2(), len23);
+                IVertex3D.cross(len12, len23, len23);
+                return len23;
+            }
+        }
     }
 
     public Set<ID> getFaces() {
@@ -128,6 +147,8 @@ public class IMesh<ID> {
     private Map<IMeshEdge, Set<ID>> edgeConnectivity; // keep track of edges and the faces that are attached to it
     private Map<ID, IVertex3D> vertices;
     private Map<ID, IMeshFace> faces;
+    private Map<ID, IVertex3D> normals; // map from the face ID to the normal for the face
+
     private Graph<ID, IMeshEdge> meshConnectivity;
         // auto-built graph that keeps track of the connectivity along edges of faces
         // V: Face tag
@@ -140,6 +161,7 @@ public class IMesh<ID> {
         this.meshConnectivity = new SimpleGraph<>(null, null, false);
         this.edgeConnectivity = new HashMap<>();
         this.edgeCache = new HashMap<>();
+        this.normals = new HashMap<>();
     }
 
     private IMeshEdge getCachedEdge(ID v1, ID v2) {

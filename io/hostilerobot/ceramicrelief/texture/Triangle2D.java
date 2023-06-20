@@ -177,11 +177,6 @@ public class Triangle2D implements Rectangle {
         return inRangeExclusive(u) && inRangeExclusive(v) && inRangeExclusive(u + v);
     }
 
-    // since we keep the same list of points as a reference for our texture, we continue this pattern
-    // by just passing in the indices that we utilize
-    public Triangle2D(List<Point2D> vertices, int insertedPoint, int v1, int v2, int v3) {
-        this(vertices.get(insertedPoint), vertices.get(v1), vertices.get(v2), vertices.get(v3));
-    }
     public Triangle2D(Point2D insertedPoint, Point2D v1, Point2D v2, Point2D v3) {
         precompute(insertedPoint, v1, v2, v3);
     }
