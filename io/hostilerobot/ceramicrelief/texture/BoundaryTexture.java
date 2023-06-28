@@ -7,14 +7,12 @@ import io.hostilerobot.ceramicrelief.imesh.IMesh;
 import io.hostilerobot.ceramicrelief.imesh.IVertex3D;
 import javafx.geometry.Point2D;
 import org.apache.commons.math.fraction.Fraction;
-import org.apache.commons.math.util.FastMath;
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
 
 import static org.jheaps.AddressableHeap.Handle;
 import org.jheaps.tree.PairingHeap;
 
-import java.lang.ref.Reference;
 import java.util.*;
 
 
@@ -24,6 +22,8 @@ import java.util.*;
 public class BoundaryTexture {
     private IMesh<? extends Object> backingMesh;
         // since we're not adding items we really don't care about the type of the backing ID, however this is still useful in lookups
+
+
 
     private static class TEdge {
         public TEdge(int v1, int v2) {
@@ -59,14 +59,14 @@ public class BoundaryTexture {
         }
     }
 
-    private static boolean sanityCheck(
-        IMesh.IMeshEdge edgeToCheck,
-        Object vertex1,
-        Object vertex2
-    ) {
-        return (edgeToCheck.getVertex1() == vertex1 && edgeToCheck.getVertex2() == vertex2) ||
-                (edgeToCheck.getVertex2() == vertex1  && edgeToCheck.getVertex1() == vertex2);
-    }
+//    private static boolean sanityCheck(
+//        IMesh.IMeshEdge edgeToCheck,
+//        Object vertex1,
+//        Object vertex2
+//    ) {
+//        return (edgeToCheck.getFace1() == vertex1 && edgeToCheck.getFace2() == vertex2) ||
+//                (edgeToCheck.getFace2() == vertex1  && edgeToCheck.getFace1() == vertex2);
+//    }
 
     /**
      * not-so-elegant solution for finding a common face between two edges and finding where the expected texture coordinates should be
@@ -75,147 +75,149 @@ public class BoundaryTexture {
      * extracts the common edge of the two faces based on comparing the reference IDs of the vertices
      * then it translates it to the edge of the texture coordinates by extracting it from {@param firstFace}, which represents
      * the coordinates for the first face.
-     *
-     * todo - move to HeapElem. Some sort of populate function based on first, second, and firstFace.
      */
-    private static void setCommonEdge_ref(IMesh.IMeshFace first, IMesh.IMeshFace second, TFace firstFace,
-                                           HeapElem reference) {
+    private void prepareForPlacement(IMesh.IMeshFace first, IMesh.IMeshFace second, TFace firstFace,
+                                     HeapElem reference) {
         // we only need to check currentFace.v1 and currentFace.v2
         // since they're sharing an edge, either one or the other will match
         if(first.getV1() == second.getV1()) {
-            if(first.getV3() == second.getV2()) { // edge first[1->3] == second[1->2]
-                // sanity check that edge3d is in fact the right edge
-                assert sanityCheck(reference.edge3d, second.getV1(), second.getV2());
-                reference.otherVertexId = second.getV3();
-                // keep edge2d consistent with edge3d
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV1(), firstFace.getV3()) :
-                        new TEdge(firstFace.getV3(), firstFace.getV1());
-            } else if(first.getV2() == second.getV3()) {
-                assert sanityCheck(reference.edge3d, second.getV1(), second.getV3());
-                reference.otherVertexId = second.getV2();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV1(), firstFace.getV2()) :
-                        new TEdge(firstFace.getV2(), firstFace.getV1());
-            } else if(first.getV2() == second.getV2()) {
-                assert sanityCheck(reference.edge3d, second.getV1(), second.getV2());
+            if(first.getV3() == second.getV2()) { // edge first[1--3] == second[1--2]
+                reference.isWindingSame = true;
+                reference.edge2d = new TEdge(firstFace.getV1(), firstFace.getV3());
+                IVertex3D v2 = second.getVertex2();
+                // we create these vector in the same direction that they are defined
+                // such that they are increasing e.g. 1->2, 2->3, or 3->1
+                // triVector goes from the end of the edgeVector to the new point
+                reference.edgeVector = v2.subtract(second.getVertex1());
+                reference.triVector = second.getVertex3().subtract(v2);
+            } else if(first.getV2() == second.getV3()) { // edge first[1--2] == second[1--3]
+                reference.isWindingSame = true;
+                reference.edge2d = new TEdge(firstFace.getV2(), firstFace.getV1());
+                IVertex3D v1 = second.getVertex1();
+                reference.edgeVector = v1.subtract(second.getVertex3());
+                reference.triVector = second.getVertex2().subtract(v1);
+            }
+            // if first.getV2() == second.getV2() || first.getV3() == second.getV3()
+            // then we have encountered two faces with opposite windings.
+            // we don't consider these as adjacent in the texture map
+            else if(first.getV2() == second.getV2()) { // edge first[1--2] == second[1--2]
                 // !!! looks like we encountered different winding along adjacent edge.
-                // we flip the edge
-                // (alternative solution: we could also just continue and place this face
-                // so it's disconnected)
-                reference.otherVertexId = second.getV3();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV2(), firstFace.getV1()) :
-                        new TEdge(firstFace.getV1(), firstFace.getV2());
-            } else if(first.getV3() == second.getV3()) {
-                assert sanityCheck(reference.edge3d, second.getV1(), second.getV3());
-                // !!! same as above
-                reference.otherVertexId = second.getV2();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV3(), firstFace.getV1()) :
-                        new TEdge(firstFace.getV1(), firstFace.getV3());
+                reference.isWindingSame = false;
+                reference.edge2d = new TEdge(firstFace.getV1(), firstFace.getV2());
+                IVertex3D v2 = second.getVertex2();
+                reference.edgeVector = v2.subtract(second.getVertex1());
+                reference.triVector = second.getVertex3().subtract(v2);
+            } else if(first.getV3() == second.getV3()) { // edge first[1--3] == second[1--3]
+                reference.isWindingSame = false;
+                reference.edge2d = new TEdge(firstFace.getV3(), firstFace.getV1());
+                IVertex3D v1 = second.getVertex1();
+                reference.edgeVector = v1.subtract(second.getVertex3());
+                reference.triVector = second.getVertex2().subtract(v1);
             }
         } else if(first.getV1() == second.getV2()) {
-            if(first.getV2() == second.getV1()) {
-                assert sanityCheck(reference.edge3d, second.getV2(), second.getV1());
-                reference.otherVertexId = second.getV3();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV1(), firstFace.getV2()) :
-                        new TEdge(firstFace.getV2(), firstFace.getV1());
-            } else if(first.getV3() == second.getV3()) {
-                assert sanityCheck(reference.edge3d, second.getV2(), second.getV3());
-                reference.otherVertexId = second.getV1();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV1(), firstFace.getV3()) :
-                        new TEdge(firstFace.getV3(), firstFace.getV1());
+            if(first.getV2() == second.getV1()) { // edge first[1--2] == second[2--1]
+                reference.isWindingSame = true;
+                reference.edge2d = new TEdge(firstFace.getV2(), firstFace.getV1());
+                IVertex3D v2 = second.getVertex2();
+                reference.edgeVector = v2.subtract(second.getVertex1());
+                reference.triVector = second.getVertex3().subtract(v2);
+            } else if(first.getV3() == second.getV3()) { // edge first[1--3] == second[2--3]
+                reference.isWindingSame = true;
+                reference.edge2d = new TEdge(firstFace.getV1(), firstFace.getV3());
+                IVertex3D v3 = second.getVertex3();
+                reference.edgeVector = v3.subtract(second.getVertex2());
+                reference.triVector = second.getVertex1().subtract(v3);
             } // different winding conditions
-            else if(first.getV2() == second.getV3()) {
-                assert sanityCheck(reference.edge3d, second.getV2(), second.getV3());
-                reference.otherVertexId = second.getV1();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV2(), firstFace.getV1()) :
-                        new TEdge(firstFace.getV1(), firstFace.getV2());
-            } else if(first.getV3() == second.getV1()) {
-                assert sanityCheck(reference.edge3d, second.getV2(), second.getV1());
-                reference.otherVertexId = second.getV3();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV3(), firstFace.getV1()) :
-                        new TEdge(firstFace.getV1(), firstFace.getV3());
+            else if(first.getV2() == second.getV3()) { // edge first[1--2] == second[2--3]
+                reference.isWindingSame = false;
+                reference.edge2d = new TEdge(firstFace.getV1(), firstFace.getV2());
+                IVertex3D v3 = second.getVertex3();
+                reference.edgeVector = v3.subtract(second.getVertex2());
+                reference.triVector = second.getVertex1().subtract(v3);
+            } else if(first.getV3() == second.getV1()) { // edge first[1--3] == second[2--1]
+                reference.isWindingSame = false;
+                reference.edge2d = new TEdge(firstFace.getV3(), firstFace.getV1());
+                IVertex3D v2 = second.getVertex2();
+                reference.edgeVector = v2.subtract(second.getVertex1());
+                reference.triVector = second.getVertex3().subtract(v2);
             }
         } else if(first.getV1() == second.getV3()) {
-            if(first.getV2() == second.getV2()) {
-                assert sanityCheck(reference.edge3d, second.getV3(), second.getV2());
-                reference.otherVertexId = second.getV1();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV1(), firstFace.getV2()) :
-                        new TEdge(firstFace.getV2(), firstFace.getV1());
-            } else if(first.getV3() == second.getV1()) {
-                assert sanityCheck(reference.edge3d, second.getV3(), second.getV1());
-                reference.otherVertexId = second.getV2();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV1(), firstFace.getV3()) :
-                        new TEdge(firstFace.getV3(), firstFace.getV1());
+            if(first.getV2() == second.getV2()) { // edge first[1--2] == second[3--2]
+                reference.isWindingSame = true;
+                reference.edge2d = new TEdge(firstFace.getV2(), firstFace.getV1());
+                IVertex3D v3 = second.getVertex3();
+                reference.edgeVector = v3.subtract(second.getVertex2());
+                reference.triVector = second.getVertex1().subtract(v3);
+            } else if(first.getV3() == second.getV1()) { // edge first[1--3] == second[3--1]
+                reference.isWindingSame = true;
+                reference.edge2d = new TEdge(firstFace.getV1(), firstFace.getV3());
+                IVertex3D v1 = second.getVertex1();
+                reference.edgeVector = v1.subtract(second.getVertex3());
+                reference.triVector = second.getVertex2().subtract(v1);
             } // opposite windings
-            else if(first.getV2() == second.getV1()) {
-                assert sanityCheck(reference.edge3d, second.getV3(), second.getV1());
-                reference.otherVertexId = second.getV2();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV2(), firstFace.getV1()) :
-                        new TEdge(firstFace.getV1(), firstFace.getV2());
-            } else if(first.getV3() == second.getV2()) {
-                assert sanityCheck(reference.edge3d, second.getV3(), second.getV2());
-                reference.otherVertexId = second.getV1();
-                reference.edge2d = (first.getV1() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV3(), firstFace.getV1()) :
-                        new TEdge(firstFace.getV1(), firstFace.getV3());
+            else if(first.getV2() == second.getV1()) { // edge first[1--2] == second[3--1]
+                reference.isWindingSame = false;
+                reference.edge2d = new TEdge(firstFace.getV1(), firstFace.getV2());
+                IVertex3D v1 = second.getVertex1();
+                reference.edgeVector = v1.subtract(second.getVertex3());
+                reference.triVector = second.getVertex2().subtract(v1);
+            } else if(first.getV3() == second.getV2()) { // edge first[1--3] == second[3--2]
+                reference.isWindingSame = false;
+                reference.edge2d = new TEdge(firstFace.getV3(), firstFace.getV1());
+                IVertex3D v3 = second.getVertex3();
+                reference.edgeVector = v3.subtract(second.getVertex2());
+                reference.triVector = second.getVertex1().subtract(v3);
             }
         } else if(first.getV2() == second.getV1()) {
-            if(first.getV3() == second.getV3()) {
-                assert sanityCheck(reference.edge3d, second.getV1(), second.getV3());
-                reference.otherVertexId = second.getV2();
-                reference.edge2d = (first.getV2() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV2(), firstFace.getV3()) :
-                        new TEdge(firstFace.getV3(), firstFace.getV2());
+            if(first.getV3() == second.getV3()) { // edge first[2--3] == second[1--3]
+                reference.isWindingSame = true;
+                reference.edge2d = new TEdge(firstFace.getV3(), firstFace.getV2());
+                IVertex3D v1 = second.getVertex1();
+                reference.edgeVector = v1.subtract(second.getVertex3());
+                reference.triVector = second.getVertex2().subtract(v1);
             } // opposite winding
-            else if(first.getV3() == second.getV2()) {
-                assert sanityCheck(reference.edge3d, second.getV1(), second.getV2());
-                reference.otherVertexId = second.getV3();
-                reference.edge2d = (first.getV2() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV3(), firstFace.getV2()) :
-                        new TEdge(firstFace.getV2(), firstFace.getV3());
+            else if(first.getV3() == second.getV2()) { // edge first[2--3] == second[1--2]
+                reference.isWindingSame = false;
+                reference.edge2d = new TEdge(firstFace.getV2(), firstFace.getV3());
+                IVertex3D v2 = second.getVertex2();
+                reference.edgeVector = v2.subtract(second.getVertex1());
+                reference.triVector = second.getVertex3().subtract(v2);
             }
         } else if(first.getV2() == second.getV2()) {
-            if(first.getV3() == second.getV1()) {
-                assert sanityCheck(reference.edge3d, second.getV2(), second.getV1());
-                reference.otherVertexId = second.getV3();
-                reference.edge2d = (first.getV2() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV2(), firstFace.getV3()) :
-                        new TEdge(firstFace.getV3(), firstFace.getV2());
-
+            if(first.getV3() == second.getV1()) { // edge first[2--3] == second[2--1]
+                reference.isWindingSame = true;
+                reference.edge2d = new TEdge(firstFace.getV3(), firstFace.getV2());
+                IVertex3D v2 = second.getVertex2();
+                reference.edgeVector = v2.subtract(second.getVertex1());
+                reference.triVector = second.getVertex3().subtract(v2);
             } // opposite winding
-            else if(first.getV3() == second.getV3()) {
-                assert sanityCheck(reference.edge3d, second.getV2(), second.getV3());
-                reference.otherVertexId = second.getV1();
-                reference.edge2d = (first.getV2() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV3(), firstFace.getV2()) :
-                        new TEdge(firstFace.getV2(), firstFace.getV3());
+            else if(first.getV3() == second.getV3()) { // edge first[2--3] == second[2--3]
+                reference.isWindingSame = false;
+                reference.edge2d = new TEdge(firstFace.getV2(), firstFace.getV3());
+                IVertex3D v3 = second.getVertex3();
+                reference.edgeVector = v3.subtract(second.getVertex2());
+                reference.triVector = second.getVertex1().subtract(v3);
             }
         } else if(first.getV2() == second.getV3()) {
-            if(first.getV3() == second.getV2()) {
-                assert sanityCheck(reference.edge3d, second.getV3(), second.getV2());
-                reference.otherVertexId = second.getV1();
-                reference.edge2d = (first.getV2() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV2(), firstFace.getV3()) :
-                        new TEdge(firstFace.getV3(), firstFace.getV2());
+            if(first.getV3() == second.getV2()) { // edge first[2--3] == second[3--2]
+                reference.isWindingSame = true;
+                reference.edge2d = new TEdge(firstFace.getV3(), firstFace.getV2());
+                IVertex3D v3 = second.getVertex3();
+                reference.edgeVector = v3.subtract(second.getVertex2());
+                reference.triVector = second.getVertex1().subtract(v3);
             } // opposite winding
-            else if(first.getV3() == second.getV1()) {
-                assert sanityCheck(reference.edge3d, second.getV3(), second.getV1());
-                reference.otherVertexId = second.getV2();
-                reference.edge2d = (first.getV2() == reference.edge3d.getVertex1()) ?
-                        new TEdge(firstFace.getV3(), firstFace.getV2()) :
-                        new TEdge(firstFace.getV2(), firstFace.getV3());
+            else if(first.getV3() == second.getV1()) { // edge first[2--3] == second[3--1]
+                reference.isWindingSame = false;
+                reference.edge2d = new TEdge(firstFace.getV2(), firstFace.getV3());
+                IVertex3D v1 = second.getVertex1();
+                reference.edgeVector = v1.subtract(second.getVertex3());
+                reference.triVector = second.getVertex2().subtract(v1);
             }
         }
+
+        TEdgeConnectionPolicy policy = edgeConnectionPolicy.get(reference.adjacentFaces);
+        // set policy to a default if it's not user defined
+        reference.connectionPolicy = policy != null ? policy : TEdgeConnectionPolicy.getDefaultPolicy(reference.isWindingSame);
     }
 
     private static class FaceInfo{
@@ -231,15 +233,26 @@ public class BoundaryTexture {
             return tFace >= 0;
         }
     }
+    private static class TEdgeInfo {
+        // faces can be obtained using textureConnections.getSourceVertex/getTargetVertex
+        TEdge edge;
+        TEdgeConnectionPolicy policy;
+    }
     // texture vertices
     private List<Point2D> tVertices;
-    // XXX - this does not work. There might be multiple places where a 3d vertex maps to a 2d texture coordinate
-//    private Map<Object, Integer> vertexMapping; // mapping of 3d vertex ID to index of 2d representation in our vertices
     // our list of faces on the texture. Faces indexed to tVertices
     private List<TFace> tFaces;
     private RTree<TFace, Triangle2D> intersectionTest;
     private Map<Object, FaceInfo> faceMapping; // mapping of 3d face ID to index of 2d representation and internal index for 3d representation
-
+    /**
+     * describes how specific edges should be placed from 3d to 2d.
+     * This is useful if we want to ensure that specific edges (that are connected in 3d) are not wrapped or connected in 2d.
+     * This is also useful for describing how we should handle triangles in the 2d plane, for example if we encounter two triangles with different winding orders
+     *
+     * if an entry does not exist in the map, then we use TEdgeConnectionPolicy.getDefaultPolicy for a given edge
+     */
+    private Map<IMesh<? extends Object>.IMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy;
+    private Graph<TFace, TEdgeInfo> textureConnections; // describes the relationship between triangles in our 2d texture
 
     private void fillMapping() {
         Set<? extends Object> ids = backingMesh.getFaces();
@@ -257,6 +270,11 @@ public class BoundaryTexture {
         }
     }
 
+
+    public BoundaryTexture(IMesh<? extends Object> backingMesh) {
+        this(backingMesh, Collections.emptyMap());
+    }
+
     /**
      * what we want to achieve :
      *   project a face from IMesh to 2d plane
@@ -269,12 +287,12 @@ public class BoundaryTexture {
      *      Mark the face as "placed" and build a mapping from 3d triangle to 2d
      *   if it does, then mark the face as "dead", meaning this vertex is impassible in our current face traversal and will be saved for a future iteration
      */
-    public BoundaryTexture(IMesh<? extends Object> backingMesh) {
+    public BoundaryTexture(IMesh<? extends Object> backingMesh, Map<IMesh<? extends Object>.IMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
         this.tFaces = new ArrayList<>();
         this.tVertices = new ArrayList<>();
-        this.backingMesh = backingMesh;
         this.faceMapping = new HashMap<>();
-//        this.vertexMapping = new HashMap<>();
+        this.backingMesh = backingMesh;
+        this.edgeConnectionPolicy = edgeConnectionPolicy;
 
         // make an integer mapping for the faces in the mesh from Object ID -> int
         // Object ID is already the type of int, then we keep the original mapping.
@@ -284,22 +302,21 @@ public class BoundaryTexture {
 
     private static class HeapElem{
         private Object faceId; // id of the face in 3d we're attempting to place down
-        private IMesh<? extends Object>.IMeshEdge edge3d; // edge in 3d that connects to this face (or null if it's the first item)
+        private IMesh<Object>.IMeshEdge adjacentFaces; // edge in 3d that connects to this face (or null if it's the first item)
         private TEdge edge2d;  // edge in 2d that connects to the face (this is the translation from edge3d to the 2d plain)
-        private Object otherVertexId; // (3d) id of the vertex that is NOT a part of the edge
+        private IVertex3D edgeVector; // vector that describes the adjacent edge we're laying down
+        private IVertex3D triVector; // vector that describes the new triangle we're laying down
+        private TEdgeConnectionPolicy connectionPolicy;
+        private boolean isWindingSame; // is the winding the same between the two edges?
         public HeapElem(Object faceId) {
             this.faceId = faceId;
             edge2d = null;
-            edge3d = null;
-            otherVertexId = null;
+            adjacentFaces = null;
         }
-        public HeapElem(Object faceId, IMesh<? extends Object>.IMeshEdge edge3d, TEdge edge2d) {
+        public HeapElem(Object faceId, IMesh<Object>.IMeshEdge adjacentFaces) {
             this.faceId = faceId;
-            this.edge3d = edge3d;
-            this.edge2d = edge2d;
+            this.adjacentFaces = adjacentFaces;
         }
-
-
     }
 
     // as we traverse the 3d graph, we place down faces that are similar enough in angle to faces that are already down first
@@ -382,7 +399,7 @@ public class BoundaryTexture {
                 if(faceMapping.get(currentFaceId).isFacePlacedOnTexture())
                     continue;
 
-                IMesh.IMeshEdge adjacentEdge3d = elem.edge3d;
+                IMesh<Object>.IMeshEdge adjacentEdge3d = elem.adjacentFaces;
                 TEdge adjacentEdge2d = elem.edge2d;
 
                 Point2D insertedPoint = null; // non-null if this isn't the first inserted triangle
@@ -465,6 +482,7 @@ public class BoundaryTexture {
 
                 // run through the edges that connect to the current one
                 for(IMesh<Object>.IMeshEdge edge : connectivity.iterables().edgesOf(currentFaceId)) {
+
                     // id of the other face
                     Object otherFaceId = Graphs.getOppositeVertex(connectivity, edge, currentFaceId);
                     // this face is already placed on the texture. We don't process it.
@@ -483,9 +501,8 @@ public class BoundaryTexture {
                     // translate 3d edge to its 2d equivalent. Since we're guaranteed that currentFaceId
                     // already is mapped to 2d texture, all vertices should have entries.
 
-                    HeapElem newElem = new HeapElem(otherFaceId);
-                    newElem.edge3d = edge;
-                    setCommonEdge_ref(currentFace, otherFace, newFace, newElem);
+                    HeapElem newElem = new HeapElem(otherFaceId, edge);
+                    prepareForPlacement(currentFace, otherFace, newFace, newElem);
                     // populate HeapElem such that we map edge3d to the appropriate edge2d, following winding orders
 
                     // I don't think we need to worry about edges being flipped, same vertex1 in 3d maps to same vertex1 in 2d (likewise for vertex2)

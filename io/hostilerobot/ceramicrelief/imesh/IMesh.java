@@ -1,10 +1,8 @@
 package io.hostilerobot.ceramicrelief.imesh;
 
 
-import io.hostilerobot.ceramicrelief.texture.BoundaryTexture;
 import org.apache.commons.math.fraction.Fraction;
 import org.jgrapht.Graph;
-import org.jgrapht.Graphs;
 import org.jgrapht.graph.SimpleGraph;
 
 import java.util.*;
@@ -20,13 +18,57 @@ import java.util.function.BiFunction;
  * Use generic ID - if we want to have a string representation for built objects vs integer for generated
  */
 public class IMesh<ID> {
-    public class IMeshEdge {
+    /**
+     * cache mesh edge. Used to find edges that are the same in 3d space, and only used internally in IMesh
+     * to build a graph among faces that share an edge. Note that more than two faces may share an edge in 3d space
+     */
+    private class CMeshEdge {
         // represents IDs for vertices in the mesh
         private ID v1, v2;
 
-        private IMeshEdge(ID v1, ID v2) {
+        private CMeshEdge(ID v1, ID v2) {
             this.v1 = v1;
             this.v2 = v2;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            CMeshEdge that = (CMeshEdge) o;
+
+            // it's the same edge if we're switching up the order
+            return (getV1().equals(that.getV2()) && getV2().equals(that.getV2()))
+                    || (getV1().equals(that.getV2()) && getV2().equals(that.getV1()));
+        }
+
+        public ID getV1() {
+            return v1;
+        }
+
+        public ID getV2() {
+            return v2;
+        }
+
+        @Override
+        public int hashCode() {
+            return getV1().hashCode() * getV2().hashCode();
+        }
+
+        public String toString() {
+            return getV1() + " -- " + getV2();
+        }
+    }
+
+    public class IMeshEdge {
+        // represents IDs for two adjacent edges in the mesh
+        // this is more specific than CMeshEdge, as more than two faces in the mesh can share an edge.
+        // However, we disallow two faces from sharing more than one edge
+        private final ID face1, face2;
+
+        public IMeshEdge(ID face1, ID face2) {
+            this.face1 = face1;
+            this.face2 = face2;
         }
 
         @Override
@@ -36,30 +78,23 @@ public class IMesh<ID> {
             IMeshEdge that = (IMeshEdge) o;
 
             // it's the same edge if we're switching up the order
-            return (getVertex1().equals(that.getVertex2()) && getVertex2().equals(that.getVertex2()))
-                || (getVertex1().equals(that.getVertex2()) && getVertex2().equals(that.getVertex1()));
+            return (getFace1().equals(that.getFace2()) && getFace2().equals(that.getFace2()))
+                    || (getFace1().equals(that.getFace2()) && getFace2().equals(that.getFace1()));
         }
 
-        public ID getVertex1() {
-            return v1;
+        public ID getFace1() {
+            return face1;
         }
-        public ID getVertex2() {
-            return v2;
-        }
-
-        IMeshEdge setVertices(ID v1, ID v2) {
-            this.v1 = v1;
-            this.v2 = v2;
-            return this;
+        public ID getFace2() {
+            return face2;
         }
 
         @Override
         public int hashCode() {
-            return getVertex1().hashCode() * getVertex2().hashCode();
+            return getFace1().hashCode() * getFace2().hashCode();
         }
-
         public String toString() {
-            return getVertex1() + " -- " + getVertex2();
+            return getFace1() + " -- " + getFace2();
         }
     }
     public class IMeshFace {
@@ -95,30 +130,6 @@ public class IMesh<ID> {
         public IVertex3D getVertex3() {
             return vertices.get(getV3());
         }
-        public IMeshEdge getEdge1_2() {
-            return getCachedEdge(getV1(), getV2());
-        }
-        public IMeshEdge getEdge2_3() {
-            return getCachedEdge(getV2(), getV3());
-        }
-        public IMeshEdge getEdge3_1() {
-            return getCachedEdge(getV3(), getV1());
-        }
-
-        private Set<IMeshEdge> outgoing = null;
-        public Set<IMeshEdge> getOutgoingEdges() {
-            if(outgoing == null) {
-                outgoing = meshConnectivity.outgoingEdgesOf(face);
-            }
-            return outgoing;
-        }
-        private List<ID> neighborFaces = null;
-        public List<ID> getNeighborFaces() {
-            if(neighborFaces == null) {
-                neighborFaces = Graphs.neighborListOf(meshConnectivity, face);
-            }
-            return neighborFaces;
-        }
 
         // normal that has not (yet) changed to a unit vector
         public IVertex3D getNormal() {
@@ -143,8 +154,9 @@ public class IMesh<ID> {
         return faces.keySet();
     }
 
-    private Map<ID, Map<ID, IMeshEdge>> edgeCache; // cache the existing edges so we'll use the same objects
-    private Map<IMeshEdge, Set<ID>> edgeConnectivity; // keep track of edges and the faces that are attached to it
+    private Map<ID, Map<ID, CMeshEdge>> edgeCache; // cache the existing edges so we'll use the same objects
+    private Map<CMeshEdge, Set<ID>> edgeConnectivity; // keep track of edges and the faces that are attached to it
+
     private Map<ID, IVertex3D> vertices;
     private Map<ID, IMeshFace> faces;
     private Map<ID, IVertex3D> normals; // map from the face ID to the normal for the face
@@ -164,21 +176,21 @@ public class IMesh<ID> {
         this.normals = new HashMap<>();
     }
 
-    private IMeshEdge getCachedEdge(ID v1, ID v2) {
-        Map<ID, IMeshEdge> entry1, entry2;
-        IMeshEdge edge;
+    private CMeshEdge getCachedEdge(ID v1, ID v2) {
+        Map<ID, CMeshEdge> entry1, entry2;
+        CMeshEdge edge;
         if((entry1 = edgeCache.get(v1)) != null && (edge = entry1.get(v2)) != null) {
             return edge;
         } else if((entry2 = edgeCache.get(v2)) != null && (edge = entry2.get(v2)) != null) {
             return edge;
         } else {
-            edge = new IMeshEdge(v1, v2);
+            edge = new CMeshEdge(v1, v2);
             if(entry1 != null) {
                 entry1.put(v2, edge);
             } else if(entry2 != null) {
                 entry2.put(v1, edge);
             } else {
-                Map<ID, IMeshEdge> newEntry = new HashMap<>(2);
+                Map<ID, CMeshEdge> newEntry = new HashMap<>(2);
                 newEntry.put(v2, edge);
                 edgeCache.put(v1, newEntry);
             }
@@ -202,11 +214,24 @@ public class IMesh<ID> {
     }
 
     public IMesh<ID> addVertex(ID id, IVertex3D vertex) {
+        if(edgeConnectivity == null) {
+            throw new IllegalStateException("Cannot add new vertices to an IMesh that has been cleaned");
+        }
         vertices.put(id, vertex);
         return this;
     }
 
+    /**
+     * @param id the ID to be used for the first triangle
+     * @param v1 the ID for the first vertex
+     * @param v2 the ID for the second vertex
+     * @param v3 the ID for the third vertex
+     * @return this Mesh
+     */
     public IMesh<ID> addTriangle(ID id, ID v1, ID v2, ID v3) {
+        if(edgeConnectivity == null) {
+            throw new IllegalStateException("Cannot add a new triangle to an IMesh that has been cleaned");
+        }
         if(!vertices.containsKey(v1) || !vertices.containsKey(v2) || !vertices.containsKey(v3)) {
             throw new NoSuchElementException("Mesh does not contain all vertices (" + v1 + ", " + v2 + ", " + v3 + ")");
         }
@@ -214,14 +239,22 @@ public class IMesh<ID> {
         faces.put(id, new IMeshFace(id, v1, v2, v3));
         meshConnectivity.addVertex(id); // add a vertex for the face.
 
-        BiFunction<IMeshEdge, Set<ID>, Set<ID>> addFaceFn = (edge, faces) -> {
+        BiFunction<CMeshEdge, Set<ID>, Set<ID>> addFaceFn = (edge, faces) -> {
             if(faces == null) {
                 faces = new HashSet<>();
             }
             // add graph connectivity from this face to all other faces that share an edge
             for(ID face : faces) {
+                // don't place an edge down in a self loop to the same face
+                // don't add an edge between faces that are already connected
                 if(!Objects.equals(face, id)) {
-                    meshConnectivity.addEdge(face, id, edge);
+                    if(!meshConnectivity.containsEdge(id, face)) {
+                        meshConnectivity.addEdge(id, face, new IMeshEdge(id, face));
+                    }
+                    if(!meshConnectivity.containsEdge(face, id)) {
+                        // bidirectional support in case we want to swap out the graph type
+                        meshConnectivity.addEdge(face, id, new IMeshEdge(face, id));
+                    }
                 }
             }
             faces.add(id);
@@ -235,5 +268,10 @@ public class IMesh<ID> {
         edgeConnectivity.compute(getCachedEdge(v3, v1), addFaceFn);
 
         return this;
+    }
+
+    public void clean() {
+        edgeConnectivity.clear();
+        edgeConnectivity = null;
     }
 }
