@@ -177,7 +177,7 @@ public class Triangle2D implements Rectangle {
         return inRangeExclusive(u) && inRangeExclusive(v) && inRangeExclusive(u + v);
     }
 
-    public Triangle2D(Point2D insertedPoint, Point2D v1, Point2D v2, Point2D v3) {
+    public  Triangle2D(Point2D insertedPoint, Point2D v1, Point2D v2, Point2D v3) {
         precompute(insertedPoint, v1, v2, v3);
     }
 

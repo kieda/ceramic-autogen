@@ -88,6 +88,14 @@ public class IMesh<ID> {
         public ID getFace2() {
             return face2;
         }
+        public ID getOtherFace(ID face) {
+            if(face == getFace1()) {
+                return getFace2();
+            } else {
+                assert face == getFace2();
+                return getFace1();
+            }
+        }
 
         @Override
         public int hashCode() {

@@ -27,7 +27,7 @@ public enum TEdgeConnectionPolicy {
      * this relationship preserves shape, but reverses directionality with different winding orders
      * this relationship has the same directionality for the same winding order
      */
-    ADJACENT_EDGE,
+    ADJACENT_EDGE(true, false),
 
     /**
      * represents that the edge mirrors an opposing adjacent face
@@ -55,14 +55,25 @@ public enum TEdgeConnectionPolicy {
      * this relationship does not preserve shape, and has the same directionality with different winding orders
      * this relationship does not have the same directionality with the same winding order
      */
-    MIRRORED_EDGE,
+    MIRRORED_EDGE(false, true),
 
     /**
      * there is no edge or relationship in the texture between the two faces
      * note that this can be utilized to have no texture relationship between two faces even if they share an edge in 3d
      * this creates a seam on the mesh.
      */
-    NO_EDGE;
+    NO_EDGE(false, false);
+    TEdgeConnectionPolicy(boolean isConnectedOnSameWinding, boolean isConnectedOnDifferentWinding) {
+        this.isConnectedOnSameWinding = isConnectedOnSameWinding;
+        this.isConnectedOnDifferentWinding = isConnectedOnDifferentWinding;
+    }
+    private final boolean isConnectedOnSameWinding;
+    private final boolean isConnectedOnDifferentWinding;
+
+    public boolean connected(boolean sameWinding) {
+        return (sameWinding && isConnectedOnSameWinding)
+                || (!sameWinding && isConnectedOnDifferentWinding);
+    }
 
     public static TEdgeConnectionPolicy getDefaultPolicy(boolean hasSameWinding) {
         return hasSameWinding ? ADJACENT_EDGE : MIRRORED_EDGE;

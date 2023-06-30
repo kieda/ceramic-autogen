@@ -19,6 +19,11 @@ public class IVertex3D {
         this.z = Fraction.ZERO;
     }
 
+    public IVertex3D(IVertex3D other) {
+        this.x = other.x;
+        this.y = other.y;
+        this.z = other.z;
+    }
     public IVertex3D(Fraction x, Fraction y, Fraction z) {
         this.x = x;
         this.y = y;
