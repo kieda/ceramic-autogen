@@ -24,36 +24,6 @@ import java.util.*;
 // we can just use a RTree library. Then I don't have to fix as many bugs
 // essentially represents a texture that
 public class BoundaryTexture {
-    private static class TEdge {
-        public TEdge(int v1, int v2) {
-            this.v1 = v1;
-            this.v2 = v2;
-        }
-        private int v1;
-        private int v2;
-
-        public int getV1() { return v1; }
-        public int getV2() {
-            return v2;
-        }
-    }
-    private static class TFace{
-        private int v1;
-        private int v2;
-        private int v3;
-
-        public int getV1() {
-            return v1;
-        }
-        public int getV3() {
-            return v3;
-        }
-        public int getV2() {
-            return v2;
-        }
-    }
-
-
     private static void populateEdge1_2(IMesh.IMeshFace faceToAdd, HeapElem reference) {
         IVertex3D v2 = faceToAdd.getVertex2();
         // we create these vector in the same direction that they are defined
@@ -203,19 +173,6 @@ public class BoundaryTexture {
         assert reference.connectionPolicy != null; // policy should be set too.
     }
 
-    private static class FaceInfo{
-        private int tFace = -1; // the position in the texture. If negative, position is TBD
-        private int faceOrder; // this is used internally as a method to distinguish 3d faces in the heap during our traversal
-        public FaceInfo(int faceOrder) {
-            this.faceOrder = faceOrder;
-        }
-        private void setTFace(int face) {
-            this.tFace = face;
-        }
-        public boolean isFacePlacedOnTexture() {
-            return tFace >= 0;
-        }
-    }
     private static class TEdgeInfo {
         // faces can be obtained using textureConnections.getSourceVertex/getTargetVertex
         TEdge edge;
@@ -357,7 +314,7 @@ public class BoundaryTexture {
             return faceId;
         }
         public int getFaceIndex() {
-	        return faceMapping.get(getFaceId()).faceOrder;
+	        return faceMapping.get(getFaceId()).getFaceOrder();
         }
 
         public TEdge getConnectingEdge() {
@@ -538,7 +495,7 @@ public class BoundaryTexture {
                 // otherwise place this face down.
                 // add the new 2d vertex to our list and link it up with newFace
                 // we search other adjacent faces, see if they are already on the texture map, and get the relevant coordinates if so.
-                TFace newFace = new TFace();
+                TFace newFace;
                 if(!elem.placeAllVertices()) {
                     Integer commonTVertex = null;
                     double currentMinDistance = 0; // set this for java compiler. However this is guaranteed to be set before it is read from.
@@ -547,7 +504,7 @@ public class BoundaryTexture {
                         // graph connection from otherFaceId to currentFaceId
                         FaceInfo faceInfo = faceMapping.get(otherFaceId);
                         if(faceInfo.isFacePlacedOnTexture()) {
-                            TFace adjacentTexture = tFaces.get(faceInfo.tFace);
+                            TFace adjacentTexture = tFaces.get(faceInfo.getTFace());
 
                             // if the neighboring face is already placed on the texture, we may can consolidate the
                             // new point to an existing one if they're very close together
@@ -591,17 +548,17 @@ public class BoundaryTexture {
 
                     // we ensure that v1, v2, and v3 are defined in the original order as in IMesh.
                     if(elem.vertexToPlace == faceToPlace.getV1()) {
-                        newFace.v1 = newIndex;
-                        newFace.v2 = adjacentEdge2d.v1;
-                        newFace.v3 = adjacentEdge2d.v2;
+                        newFace = new TFace(newIndex,
+                                adjacentEdge2d.getV1(),
+                                adjacentEdge2d.getV2());
                     } else if(elem.vertexToPlace == faceToPlace.getV2()) {
-                        newFace.v1 = adjacentEdge2d.v2;
-                        newFace.v2 = newIndex;
-                        newFace.v3 = adjacentEdge2d.v1;
+                        newFace = new TFace(adjacentEdge2d.getV2(),
+                                newIndex,
+                                adjacentEdge2d.getV1());
                     } else if(elem.vertexToPlace == faceToPlace.getV3()) {
-                        newFace.v1 = adjacentEdge2d.v1;
-                        newFace.v2 = adjacentEdge2d.v2;
-                        newFace.v3 = newIndex;
+                        newFace = new TFace(adjacentEdge2d.getV1(),
+                                adjacentEdge2d.getV2(),
+                                newIndex);
                     } else {
                         throw new IllegalStateException(elem.vertexToPlace + " not in " + faceToPlace);
                     }
@@ -610,9 +567,9 @@ public class BoundaryTexture {
                     // we are placing the first triangle in a mesh subset
                     // we add all three vertices to the data structure, then add the face
                     int tri1 = tVertices.size();
-                    newFace.v1 = tri1;
-                    newFace.v2 = tri1 + 1;
-                    newFace.v3 = tri1 + 2;
+                    newFace = new TFace(tri1,
+                            tri1 + 1,
+                            tri1 + 2);
 
                     tVertices.add(p1);
                     tVertices.add(p2);
@@ -621,7 +578,7 @@ public class BoundaryTexture {
 
                 // add the new face to our list of faces
                 int newFaceId = tFaces.size();
-                faceMapping.get(currentFaceId).tFace = newFaceId;
+                faceMapping.get(currentFaceId).setTFace(newFaceId);
                 tFaces.add(newFace);
                 intersectionTest = intersectionTest.add(newFace, newTriangle);
 

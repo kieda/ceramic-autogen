@@ -23,7 +23,7 @@ public class MeshProjectionTraversal {
     // make this generic since we're not adding items we really don't care about the type of the backing ID type
     private final IMesh<? extends Object> backingMesh;
     private Map<IMesh<? extends Object>.IMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy;
-//    private Map<Object, BoundaryTexture.FaceInfo> faceMapping;
+    private Map<Object, FaceInfo> faceMapping;
 
     public MeshProjectionTraversal(
             Object initialFace,
