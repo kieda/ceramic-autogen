@@ -1,6 +1,7 @@
 package io.hostilerobot.ceramicrelief.imesh;
 
 
+import io.hostilerobot.ceramicrelief.util.Hash;
 import org.apache.commons.math.fraction.Fraction;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleGraph;
@@ -52,7 +53,7 @@ public class IMesh<ID> {
 
         @Override
         public int hashCode() {
-            return getV1().hashCode() * getV2().hashCode();
+            return Hash.hashSymmetric(getV1().hashCode(), getV2().hashCode());
         }
 
         public String toString() {
@@ -99,7 +100,7 @@ public class IMesh<ID> {
 
         @Override
         public int hashCode() {
-            return getFace1().hashCode() * getFace2().hashCode();
+            return Hash.hashSymmetric(getFace1().hashCode(), getFace2().hashCode());
         }
         public String toString() {
             return getFace1() + " -- " + getFace2();

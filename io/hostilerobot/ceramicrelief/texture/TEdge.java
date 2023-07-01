@@ -1,5 +1,8 @@
 package io.hostilerobot.ceramicrelief.texture;
 
+import io.hostilerobot.ceramicrelief.imesh.IMesh;
+import io.hostilerobot.ceramicrelief.util.Hash;
+
 import java.util.Objects;
 
 public class TEdge  {
@@ -20,11 +23,14 @@ public class TEdge  {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         TEdge tEdge = (TEdge) o;
-        return v1 == tEdge.v1 && v2 == tEdge.v2;
+
+        // it's the same edge if we're switching up the order
+        return (getV1() == tEdge.getV1() && getV2() == tEdge.getV2())
+                || (getV1() == tEdge.getV2() && getV2() == tEdge.getV1());
     }
 
     @Override
     public int hashCode() {
-        return v1 * v2;
+        return Hash.hashSymmetric(v1, v2);
     }
 }
