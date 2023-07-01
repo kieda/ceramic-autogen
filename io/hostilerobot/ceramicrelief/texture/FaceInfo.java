@@ -7,6 +7,7 @@ class FaceInfo {
         this.faceOrder = faceOrder;
     }
     void setTFace(int face) {
+        assert this.tFace < 0; // we should only set the index once
         this.tFace = face;
     }
     public int getFaceOrder() {
