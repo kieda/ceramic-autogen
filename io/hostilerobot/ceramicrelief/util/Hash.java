@@ -30,17 +30,4 @@ public final class Hash {
         x = (x >>> 16) ^ x;
         return x;
     }
-
-    public static long hash(long x) {
-        x = (x ^ (x >>> 30)) * (0xbf58476d1ce4e5b9L);
-        x = (x ^ (x >>> 27)) * (0x94d049bb133111ebL);
-        x = x ^ (x >>> 31);
-        return x;
-    }
-    public static long unhash(long x) {
-        x = (x ^ (x >>> 31) ^ (x >>> 62)) * (0x319642b2d24d8ec3L);
-        x = (x ^ (x >>> 27) ^ (x >>> 54)) * (0x96de1b173f119089L);
-        x = x ^ (x >>> 30) ^ (x >>> 60);
-        return x;
-    }
 }
