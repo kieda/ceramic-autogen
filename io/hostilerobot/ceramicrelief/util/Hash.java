@@ -1,17 +1,14 @@
 package io.hostilerobot.ceramicrelief.util;
 
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-
 /**
  *
  * https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
  */
 public final class Hash {
     private Hash(){}
+    public static int hashOrdered(int a, int b) {
+        return 31 * a + b;
+    }
     public static int hashSymmetric(int a, int b) {
         int ahash = hash(a);
         int bhash = hash(b);

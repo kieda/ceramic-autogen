@@ -280,6 +280,8 @@ public class IMesh<ID> {
     }
 
     public void clean() {
+        edgeCache.clear();
+        edgeCache = null;
         edgeConnectivity.clear();
         edgeConnectivity = null;
     }

@@ -32,6 +32,9 @@ import java.util.Map;
  * modified/accumulated:
  *      Map<ID, FaceInfo> faceMapping -- mapping from the 3d face to its representation in tFaces
  *      Map<IMeshEdge, TEdgeConnectionPolicy> -- mapping from distinct 3d edges to how they should be connected in 2d
+ *
+ * todo: refactor such that data is its own structure we can pass around, then we have an implementation function
+ *       that transforms the data. Currently, doing all the work in the constructor is a dumb design pattern
  */
 class MeshProjectionTraversal {
     // "close enough" distance for two points to be considered equal to another

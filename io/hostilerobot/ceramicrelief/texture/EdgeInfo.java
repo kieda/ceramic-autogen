@@ -1,6 +1,5 @@
 package io.hostilerobot.ceramicrelief.texture;
 
-import com.github.davidmoten.guavamini.Objects;
 import io.hostilerobot.ceramicrelief.imesh.IMesh;
 import io.hostilerobot.ceramicrelief.util.Hash;
 
@@ -22,6 +21,15 @@ public class EdgeInfo {
     // the edge on the mesh that directly represents this edge
     private IMesh<Object>.IMeshEdge meshEdge;
 
+    public EdgeInfo(TEdge edge1, TEdge edge2,
+                    TEdgeConnectionPolicy policy,
+                    IMesh<Object>.IMeshEdge meshEdge) {
+        this.edge1 = edge1;
+        this.edge2 = edge2;
+        this.policy = policy;
+        this.meshEdge = meshEdge;
+    }
+
     public boolean equals(Object other) {
         if(this == other)
             return true;
@@ -38,6 +46,22 @@ public class EdgeInfo {
     public int hashCode() {
         int edgeHash = Hash.hashSymmetric(edge1.hashCode(), edge2.hashCode());
         int meshHash = meshEdge.hashCode();
-        return meshHash * 31 + edgeHash;
+        return Hash.hashOrdered(meshHash, edgeHash);
+    }
+
+    public TEdge getEdge1() {
+        return edge1;
+    }
+
+    public TEdge getEdge2() {
+        return edge2;
+    }
+
+    public IMesh<Object>.IMeshEdge getMeshEdge() {
+        return meshEdge;
+    }
+
+    public TEdgeConnectionPolicy getPolicy() {
+        return policy;
     }
 }

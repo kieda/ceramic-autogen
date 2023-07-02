@@ -9,6 +9,9 @@ import java.util.*;
  * projects a 3d mesh to 2d space. Does this by BFS traversal from each face.
  * Creates a series of contiguous polygons comprised of 2d triangles. Each polygon
  * represent a disjoint subset of the faces on the 3d mesh, such that all faces are placed.
+ *
+ * todo: refactor such that data is its own structure we can pass around, then we have an implementation function
+ *       that transforms the data. Currently, doing all the work in the constructor is a dumb design pattern
  */
 public class ProjectMesh {
     // initial mesh
@@ -74,5 +77,29 @@ public class ProjectMesh {
 
         // assert that all faces from this mesh are placed on the texture.
         assert backingMesh.getFaces().stream().allMatch(id -> faceMapping.containsKey(id) && faceMapping.get(id).isFacePlacedOnTexture());
+    }
+
+    public List<MeshProjectionTraversal> getTraversals() {
+        return traversals;
+    }
+
+    public IMesh<Object> getBackingMesh() {
+        return backingMesh;
+    }
+
+    public List<Point2D> gettVertices() {
+        return tVertices;
+    }
+
+    public List<TFace> gettFaces() {
+        return tFaces;
+    }
+
+    public Map<IMesh<Object>.IMeshEdge, TEdgeConnectionPolicy> getEdgeConnectionPolicy() {
+        return edgeConnectionPolicy;
+    }
+
+    public Map<Object, FaceInfo> getFaceMapping() {
+        return faceMapping;
     }
 }
