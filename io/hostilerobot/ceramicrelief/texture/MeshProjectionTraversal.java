@@ -39,7 +39,7 @@ import java.util.Map;
 class MeshProjectionTraversal {
     // "close enough" distance for two points to be considered equal to another
     // things might not be exact due to the nature of double floating point errors
-    private final static double EPSILON = 0.001;
+    private final static double EPSILON = 0.0001;
     private final static double EPSILON_SQ = EPSILON * EPSILON;
 
     // the number of faces and vertices we added during this traversal

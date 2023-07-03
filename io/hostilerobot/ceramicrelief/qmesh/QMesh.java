@@ -15,7 +15,9 @@ import java.util.function.BiFunction;
  *
  * has additional utility for tracking the edges of items
  *
- * Use generic ID - if we want to have a string representation for built objects vs integer for generated
+ * We use an int as an id for the vertices and the edges since it works nicely with arrays and bitsets
+ * We used to have a generic parametric type ID that the user could have if they wanted to label using strings
+ * But I think it's better to just have a hashmap that is exposed to the client so the heavier lifting is just done with faster data structures.
  */
 public class QMesh<ID> {
     /**
