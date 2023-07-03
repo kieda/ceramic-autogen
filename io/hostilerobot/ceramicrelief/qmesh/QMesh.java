@@ -1,8 +1,6 @@
 package io.hostilerobot.ceramicrelief.qmesh;
 
-import io.hostilerobot.ceramicrelief.collection.bitset.IBitSet;
 import io.hostilerobot.ceramicrelief.util.Hash;
-import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.math.fraction.Fraction;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleGraph;
@@ -62,104 +60,6 @@ public class QMesh {
 
         public String toString() {
             return getV1() + " -- " + getV2();
-        }
-    }
-
-    public class QMeshEdge {
-        // represents IDs for two adjacent edges in the mesh
-        // this is more specific than CMeshEdge, as more than two faces in the mesh can share an edge.
-        // However, we disallow two faces from sharing more than one edge
-        private final int face1, face2;
-
-        public QMeshEdge(int face1, int face2) {
-            this.face1 = face1;
-            this.face2 = face2;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            QMeshEdge that = (QMeshEdge) o;
-
-            // it's the same edge if we're switching up the order
-            return (getFace1() == that.getFace2() && getFace2() == that.getFace2())
-                    || (getFace1() == that.getFace2() && getFace2() == that.getFace1());
-        }
-
-        public int getFace1() {
-            return face1;
-        }
-        public int getFace2() {
-            return face2;
-        }
-        public int getOtherFace(int face) {
-            if(face == getFace1()) {
-                return getFace2();
-            } else {
-                assert face == getFace2();
-                return getFace1();
-            }
-        }
-
-        @Override
-        public int hashCode() {
-            return Hash.hashSymmetric(getFace1(), getFace2());
-        }
-        public String toString() {
-            return getFace1() + " -- " + getFace2();
-        }
-    }
-    public class QMeshFace {
-        // id for the face in the mesh
-        private final int face;
-        // ids for vertices of the face
-        private final int v1;
-        private final int v2;
-        private final int v3;
-        private QMeshFace(int face, int v1, int v2, int v3) {
-            this.face = face; // this face's ID
-            this.v1 = v1;
-            this.v2 = v2;
-            this.v3 = v3;
-        }
-        public int getV1() {
-            return v1;
-        }
-
-        public int getV2() {
-            return v2;
-        }
-
-        public int getV3() {
-            return v3;
-        }
-        public QVertex3D getVertex1() {
-            return vertices.get(getV1());
-        }
-        public QVertex3D getVertex2() {
-            return vertices.get(getV2());
-        }
-        public QVertex3D getVertex3() {
-            return vertices.get(getV3());
-        }
-
-        // normal that has not (yet) changed to a unit vector
-        public QVertex3D getNormal() {
-            QVertex3D normal;
-
-            if((normal = normals.get(face)) != null) {
-                return normal;
-            } else {
-                QVertex3D len12 = new QVertex3D();
-                QVertex3D len23 = new QVertex3D();
-
-                // return (vertex2 - vertex1) x (vertex3 - vertex2)
-                QVertex3D.subtract(getVertex2(), getVertex1(), len12);
-                QVertex3D.subtract(getVertex3(), getVertex2(), len23);
-                QVertex3D.cross(len12, len23, len23);
-                return len23;
-            }
         }
     }
 
@@ -245,6 +145,25 @@ public class QMesh {
         return id >= 0 && id < vertexCount();
     }
 
+    // normal that has not (yet) changed to a unit vector
+    public QVertex3D getNormal(int face) {
+        QVertex3D normal;
+
+        if ((normal = normals.get(face)) != null) {
+            return normal;
+        } else {
+            QMeshFace meshFace = getFace(face);
+            QVertex3D len12 = new QVertex3D();
+            QVertex3D len23 = new QVertex3D();
+
+            // return (vertex2 - vertex1) x (vertex3 - vertex2)
+            QVertex3D vertex2 = getVertex(meshFace.getV2());
+            QVertex3D.subtract(vertex2, getVertex(meshFace.getV1()), len12);
+            QVertex3D.subtract(getVertex(meshFace.getV3()), vertex2, len23);
+            QVertex3D.cross(len12, len23, len23);
+            return len23;
+        }
+    }
 
     public boolean setVertex(int id, Fraction x, Fraction y, Fraction z) {
         if(!validVertex(id)) {

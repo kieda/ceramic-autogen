@@ -5,6 +5,8 @@ import com.github.davidmoten.rtree2.RTree;
 import com.github.davidmoten.rtree2.SearchRTree;
 import com.github.davidmoten.rtree2.geometry.internal.GeometryUtil;
 import io.hostilerobot.ceramicrelief.qmesh.QMesh;
+import io.hostilerobot.ceramicrelief.qmesh.QMeshEdge;
+import io.hostilerobot.ceramicrelief.qmesh.QMeshFace;
 import io.hostilerobot.ceramicrelief.qmesh.QVertex3D;
 import javafx.geometry.Point2D;
 import org.apache.commons.math.fraction.Fraction;
@@ -48,27 +50,27 @@ class MeshProjectionTraversal {
     // if null, no points added yet (empty bounding box)
     private BoundingBox2D bounds = null;
 
-    private static void populateEdge1_2(QMesh.QMeshFace faceToAdd, HeapElem reference) {
-        QVertex3D v2 = faceToAdd.getVertex2();
+    private static void populateEdge1_2(QMesh mesh, QMeshFace faceToAdd, HeapElem reference) {
+        QVertex3D v2 = mesh.getVertex(faceToAdd.getV2());
         // we create these vector in the same direction that they are defined
         // such that they are increasing e.g. 1->2, 2->3, or 3->1
         // triVector goes from the end of the edgeVector to the new point
-        reference.edgeVector = v2.subtract(faceToAdd.getVertex1());
-        reference.triVector = faceToAdd.getVertex3().subtract(v2);
+        reference.edgeVector = v2.subtract(mesh.getVertex(faceToAdd.getV1()));
+        reference.triVector = mesh.getVertex(faceToAdd.getV3()).subtract(v2);
         reference.vertexToPlace = faceToAdd.getV3();
     }
 
-    private static void populateEdge2_3(QMesh.QMeshFace faceToAdd, HeapElem reference) {
-        QVertex3D v3 = faceToAdd.getVertex3();
-        reference.edgeVector = v3.subtract(faceToAdd.getVertex2());
-        reference.triVector = faceToAdd.getVertex1().subtract(v3);
+    private static void populateEdge2_3(QMesh mesh, QMeshFace faceToAdd, HeapElem reference) {
+        QVertex3D v3 = mesh.getVertex(faceToAdd.getV3());
+        reference.edgeVector = v3.subtract(mesh.getVertex(faceToAdd.getV2()));
+        reference.triVector = mesh.getVertex(faceToAdd.getV1()).subtract(v3);
         reference.vertexToPlace = faceToAdd.getV1();
     }
 
-    private static void populateEdge3_1(QMesh.QMeshFace faceToAdd, HeapElem reference) {
-        QVertex3D v1 = faceToAdd.getVertex1();
-        reference.edgeVector = v1.subtract(faceToAdd.getVertex3());
-        reference.triVector = faceToAdd.getVertex2().subtract(v1);
+    private static void populateEdge3_1(QMesh mesh, QMeshFace faceToAdd, HeapElem reference) {
+        QVertex3D v1 = mesh.getVertex(faceToAdd.getV1());
+        reference.edgeVector = v1.subtract(mesh.getVertex(faceToAdd.getV3()));
+        reference.triVector = mesh.getVertex(faceToAdd.getV2()).subtract(v1);
         reference.vertexToPlace = faceToAdd.getV2();
     }
 
@@ -108,7 +110,7 @@ class MeshProjectionTraversal {
         private int vertexToPlace;
         private int faceId; // id of the face in 3d we're attempting to place down
         private int oppositeTVertex; // tVertex on the opposite side from edge2d
-        private QMesh.QMeshEdge adjacentFace; // edge in 3d that connects to this face (or null if it's the first item)
+        private QMeshEdge adjacentFace; // edge in 3d that connects to this face (or null if it's the first item)
         private TEdge edge2d;  // edge in 2d that connects to the face (this is the translation from edge3d to the 2d plain)
         private QVertex3D edgeVector; // vector that describes the adjacent edge we're laying down
         private QVertex3D triVector; // vector that describes the new triangle we're laying down
@@ -118,7 +120,7 @@ class MeshProjectionTraversal {
             edge2d = null;
             adjacentFace = null;
         }
-        public HeapElem(int faceId, QMesh.QMeshEdge adjacentFace) {
+        public HeapElem(int faceId, QMeshEdge adjacentFace) {
             this.faceId = faceId;
             this.adjacentFace = adjacentFace;
         }
@@ -181,81 +183,81 @@ class MeshProjectionTraversal {
      * then it translates it to the edge of the texture coordinates by extracting it from {@param firstFace}, which represents
      * the coordinates for the first face.
      */
-    private static void prepareForPlacement(QMesh.QMeshFace first, QMesh.QMeshFace second, TFace firstFace,
+    private static void prepareForPlacement(QMesh mesh, QMeshFace first, QMeshFace second, TFace firstFace,
                                             HeapElem reference) {
         // we only need to check currentFace.v1 and currentFace.v2
         // since they're sharing an edge, either one or the other will match
         if(first.getV1() == second.getV1()) {
             if(first.getV3() == second.getV2()) { // edge first[1--3] == second[1--2]
                 populateTEdge3_1Same(firstFace, reference);
-                populateEdge1_2(second, reference);
+                populateEdge1_2(mesh, second, reference);
             } else if(first.getV2() == second.getV3()) { // edge first[1--2] == second[1--3]
                 populateTEdge1_2Same(firstFace, reference);
-                populateEdge3_1(second, reference);
+                populateEdge3_1(mesh, second, reference);
             } // opposite windings
             else if(first.getV2() == second.getV2()) { // edge first[1--2] == second[1--2]
                 populateTEdge1_2Diff(firstFace, reference);
-                populateEdge1_2(second, reference);
+                populateEdge1_2(mesh, second, reference);
             } else if(first.getV3() == second.getV3()) { // edge first[1--3] == second[1--3]
                 populateTEdge3_1Diff(firstFace, reference);
-                populateEdge3_1(second, reference);
+                populateEdge3_1(mesh, second, reference);
             }
         } else if(first.getV1() == second.getV2()) {
             if(first.getV2() == second.getV1()) { // edge first[1--2] == second[2--1]
                 populateTEdge1_2Same(firstFace, reference);
-                populateEdge1_2(second, reference);
+                populateEdge1_2(mesh, second, reference);
             } else if(first.getV3() == second.getV3()) { // edge first[1--3] == second[2--3]
                 populateTEdge3_1Same(firstFace, reference);
-                populateEdge2_3(second, reference);
+                populateEdge2_3(mesh, second, reference);
             } // different winding conditions
             else if(first.getV2() == second.getV3()) { // edge first[1--2] == second[2--3]
                 populateTEdge1_2Diff(firstFace, reference);
-                populateEdge2_3(second, reference);
+                populateEdge2_3(mesh, second, reference);
             } else if(first.getV3() == second.getV1()) { // edge first[1--3] == second[2--1]
                 populateTEdge3_1Diff(firstFace, reference);
-                populateEdge1_2(second, reference);
+                populateEdge1_2(mesh, second, reference);
             }
         } else if(first.getV1() == second.getV3()) {
             if(first.getV2() == second.getV2()) { // edge first[1--2] == second[3--2]
                 populateTEdge1_2Same(firstFace, reference);
-                populateEdge2_3(second, reference);
+                populateEdge2_3(mesh, second, reference);
             } else if(first.getV3() == second.getV1()) { // edge first[1--3] == second[3--1]
                 populateTEdge3_1Same(firstFace, reference);
-                populateEdge3_1(second, reference);
+                populateEdge3_1(mesh, second, reference);
             } // opposite windings
             else if(first.getV2() == second.getV1()) { // edge first[1--2] == second[3--1]
                 populateTEdge1_2Diff(firstFace, reference);
-                populateEdge3_1(second, reference);
+                populateEdge3_1(mesh, second, reference);
             } else if(first.getV3() == second.getV2()) { // edge first[1--3] == second[3--2]
                 populateTEdge3_1Diff(firstFace, reference);
-                populateEdge2_3(second, reference);
+                populateEdge2_3(mesh, second, reference);
             }
         } else if(first.getV2() == second.getV1()) {
             if(first.getV3() == second.getV3()) { // edge first[2--3] == second[1--3]
                 populateTEdge2_3Same(firstFace, reference);
-                populateEdge3_1(second, reference);
+                populateEdge3_1(mesh, second, reference);
             } // opposite winding
             else if(first.getV3() == second.getV2()) { // edge first[2--3] == second[1--2]
                 populateTEdge2_3Diff(firstFace, reference);
-                populateEdge1_2(second, reference);
+                populateEdge1_2(mesh, second, reference);
             }
         } else if(first.getV2() == second.getV2()) {
             if(first.getV3() == second.getV1()) { // edge first[2--3] == second[2--1]
                 populateTEdge2_3Same(firstFace, reference);
-                populateEdge1_2(second, reference);
+                populateEdge1_2(mesh, second, reference);
             } // opposite winding
             else if(first.getV3() == second.getV3()) { // edge first[2--3] == second[2--3]
                 populateTEdge2_3Diff(firstFace, reference);
-                populateEdge2_3(second, reference);
+                populateEdge2_3(mesh, second, reference);
             }
         } else if(first.getV2() == second.getV3()) {
             if(first.getV3() == second.getV2()) { // edge first[2--3] == second[3--2]
                 populateTEdge2_3Same(firstFace, reference);
-                populateEdge2_3(second, reference);
+                populateEdge2_3(mesh, second, reference);
             } // opposite winding
             else if(first.getV3() == second.getV1()) { // edge first[2--3] == second[3--1]
                 populateTEdge2_3Diff(firstFace, reference);
-                populateEdge3_1(second, reference);
+                populateEdge3_1(mesh, second, reference);
             }
         }
         // these should be set by the end
@@ -264,7 +266,7 @@ class MeshProjectionTraversal {
 
     private static void prepareConnectionPolicy(
             HeapElem reference,
-            Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
+            Map<QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
         // populate policy: set it to default if it's not already defined
         reference.connectionPolicy = edgeConnectionPolicy.computeIfAbsent(reference.adjacentFace,
                 k -> TEdgeConnectionPolicy.getDefaultPolicy(reference.isWindingSame));
@@ -280,7 +282,7 @@ class MeshProjectionTraversal {
             List<TFace> tFaces,
             List<Point2D> tVertices,
             FaceMappingInfo faceMapping,
-            Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
+            Map<QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
         traverse(initialFace, backingMesh,
                 tFaces, tVertices,
                 faceMapping, edgeConnectionPolicy);
@@ -306,12 +308,12 @@ class MeshProjectionTraversal {
     private void traverse(int initialMeshFace, QMesh backingMesh,
                           List<TFace> tFaces, List<Point2D> tVertices,
                           FaceMappingInfo faceMapping,
-                          Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
+                          Map<QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
         // way to test for intersection among 3d triangles in a 2d plane
         // start with an empty intersection test each time we begin traversing the mesh.
         RTree<TFace, Triangle2D> intersectionTest = RTree.create();
         PairingHeap<HeapOrder, HeapElem> heap = new PairingHeap<>(HEAP_ORDER_COMPARATOR);
-        Graph<Integer, QMesh.QMeshEdge> connectivity = backingMesh.getMeshConnectivity();
+        Graph<Integer, QMeshEdge> connectivity = backingMesh.getMeshConnectivity();
 
         // add an initial element
         HeapOrder initialOrder = new HeapOrder(initialMeshFace);
@@ -330,7 +332,7 @@ class MeshProjectionTraversal {
                 continue;
             }
 
-            QMesh.QMeshFace faceToPlace = backingMesh.getFace(currentMeshFaceId);
+            QMeshFace faceToPlace = backingMesh.getFace(currentMeshFaceId);
 
             TEdge adjacentEdge2d = elem.edge2d;
 
@@ -340,6 +342,7 @@ class MeshProjectionTraversal {
             // project the triangle onto the 2d plane, preserving the length of the sides
             // calculation is mostly the same between placing the first triangle and placing subsequent triangles
             {
+                QVertex3D vertex1 = null;
                 QVertex3D v12;
                 if(!elem.placeAllVertices()) {
                     assert faceMapping.isFacePlacedOnTexture(elem.adjacentFace.getOtherFace(currentMeshFaceId));
@@ -349,7 +352,9 @@ class MeshProjectionTraversal {
                     // this lines up with p1 -> p2
                     v12 = elem.edgeVector;
                 } else {
-                    v12 = faceToPlace.getVertex2().subtract(faceToPlace.getVertex1());
+                    vertex1 = backingMesh.getVertex(faceToPlace.getV1());
+                    QVertex3D vertex2 = backingMesh.getVertex(faceToPlace.getV2());
+                    v12 = vertex2.subtract(vertex1);
                 }
 
                 double len12 = v12.length();
@@ -360,7 +365,7 @@ class MeshProjectionTraversal {
                 double u12z = v12.getZ().doubleValue() / len12;
 
                 // Z in orthonormal basis
-                QVertex3D normal = faceToPlace.getNormal();
+                QVertex3D normal = backingMesh.getNormal(currentMeshFaceId);
                 double lenNormal = normal.length();
 
                 // Z in unit vector
@@ -379,7 +384,8 @@ class MeshProjectionTraversal {
                     v31 = elem.triVector;
                 } else {
                     // we can reuse v12, as we don't need to use it any longer
-                    QVertex3D.subtract(faceToPlace.getVertex1(), faceToPlace.getVertex3(), v12);
+                    QVertex3D vertex3 = backingMesh.getVertex(faceToPlace.getV3());
+                    QVertex3D.subtract(vertex1, vertex3, v12);
                     v31 = v12;
                 }
 
@@ -437,6 +443,8 @@ class MeshProjectionTraversal {
                         p3 = new Point2D(p1.getX() + jx + kx, p1.getY() + jy - ky);
                     }
 
+                    insertedPoint = p3;
+
                     // note : we should not care about the connectionPolicy to determine the direction
                     // if the edges have opposite windings and is not mirrored, it wouldn't be added to the heap anyway
                     // if the edges have the same windings and is mirrored, it wouldn't be added to the heap
@@ -467,7 +475,7 @@ class MeshProjectionTraversal {
             if(!elem.placeAllVertices()) {
                 Integer commonTVertex = null;
                 double currentMinDistance = 0; // set this for java compiler. However this is guaranteed to be set before it is read from.
-                for(QMesh.QMeshEdge outgoing : connectivity.iterables().edgesOf(currentMeshFaceId)) {
+                for(QMeshEdge outgoing : connectivity.iterables().edgesOf(currentMeshFaceId)) {
                     int otherMeshFaceId = Graphs.getOppositeVertex(connectivity, outgoing, currentMeshFaceId);
                     // graph connection from otherFaceId to currentFaceId
                     if(faceMapping.isFacePlacedOnTexture(otherMeshFaceId)) {
@@ -475,7 +483,7 @@ class MeshProjectionTraversal {
 
                         // if the neighboring face is already placed on the texture, we may can consolidate the
                         // new point to an existing one if they're very close together
-                        QMesh.QMeshFace adjacentFace = backingMesh.getFace(otherMeshFaceId);
+                        QMeshFace adjacentFace = backingMesh.getFace(otherMeshFaceId);
                         // find vertex in common with insertedPoint
 
                         int adjacentTIndex;
@@ -555,18 +563,18 @@ class MeshProjectionTraversal {
             intersectionTest = intersectionTest.add(newFace, newTriangle);
 
             // run through the edges that connect to the current one
-            for(QMesh.QMeshEdge edge : connectivity.iterables().edgesOf(currentMeshFaceId)) {
+            for(QMeshEdge edge : connectivity.iterables().edgesOf(currentMeshFaceId)) {
                 // id of the other face
                 int otherMeshFaceId = Graphs.getOppositeVertex(connectivity, edge, currentMeshFaceId);
                 // this face is already placed on the texture. We don't process it.
                 if(faceMapping.isFacePlacedOnTexture(otherMeshFaceId))
                     continue;
-                QMesh.QMeshFace currentFace = backingMesh.getFace(currentMeshFaceId);
-                QMesh.QMeshFace otherFace = backingMesh.getFace(otherMeshFaceId);
+                QMeshFace currentFace = backingMesh.getFace(currentMeshFaceId);
+                QMeshFace otherFace = backingMesh.getFace(otherMeshFaceId);
 
                 // traverse to the new face (eventually) by putting it onto the heap
                 HeapElem newElem = new HeapElem(otherMeshFaceId, edge);
-                prepareForPlacement(currentFace, otherFace, newFace, newElem); // populate information for the HeapElem so it can be placed on the 2d texture
+                prepareForPlacement(backingMesh, currentFace, otherFace, newFace, newElem); // populate information for the HeapElem so it can be placed on the 2d texture
                 prepareConnectionPolicy(newElem, edgeConnectionPolicy);
 
                 // populate HeapElem such that we map edge3d to the appropriate edge2d, following winding orders
@@ -582,7 +590,7 @@ class MeshProjectionTraversal {
                 // (B - A) x (C - B) = normalCurrent
                 // (E - D) x (F - E) = normalOther
                 // normalCurrent . normalOther = ||normalCurrent|| * ||normalOther|| cos(theta)
-                double ranking = getRanking(currentFace, otherFace);
+                double ranking = getRanking(backingMesh, currentMeshFaceId, otherMeshFaceId);
                 HeapOrder newElemOrder = new HeapOrder(otherMeshFaceId,
                         newElem.edge2d, ranking);
 
@@ -591,10 +599,10 @@ class MeshProjectionTraversal {
         }
     }
 
-    private static double getRanking(QMesh.QMeshFace currentFace, QMesh.QMeshFace otherFace) {
+    private static double getRanking(QMesh mesh, int currentFace, int otherFace) {
         // simpler method: return -cos(theta), which is calculated from the dot product of the two normals
-        QVertex3D n1 = currentFace.getNormal();
-        QVertex3D n2 = otherFace.getNormal();
+        QVertex3D n1 = mesh.getNormal(currentFace);
+        QVertex3D n2 = mesh.getNormal(otherFace);
         Fraction dotProd = n1.dot(n2);
         double vectorLength = Math.sqrt(n1.dot(n1).multiply(n2.dot(n2)).doubleValue());
         // return -cosTheta. This has the desired effect of being the highest value at theta PI and -PI, and lowest value at theta 0

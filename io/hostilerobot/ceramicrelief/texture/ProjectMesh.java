@@ -1,6 +1,7 @@
 package io.hostilerobot.ceramicrelief.texture;
 
 import io.hostilerobot.ceramicrelief.qmesh.QMesh;
+import io.hostilerobot.ceramicrelief.qmesh.QMeshEdge;
 import javafx.geometry.Point2D;
 
 import java.util.*;
@@ -22,18 +23,18 @@ public class ProjectMesh {
     private final List<TFace> tFaces;
     private final List<Point2D> tVertices;
     private final FaceMappingInfo faceMapping;
-    private final Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy;
+    private final Map<QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy;
 
     public ProjectMesh(QMesh backingMesh) {
         this(new HashMap<>(), backingMesh);
     }
     public ProjectMesh(QMesh backingMesh,
-                       Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> userPolicy) {
+                       Map<QMeshEdge, TEdgeConnectionPolicy> userPolicy) {
         this(new HashMap<>(userPolicy), backingMesh);
     }
 
     // private constructor, also sets all data structures
-    private ProjectMesh(Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> initialPolicy, QMesh backingMesh) {
+    private ProjectMesh(Map<QMeshEdge, TEdgeConnectionPolicy> initialPolicy, QMesh backingMesh) {
         this.backingMesh = backingMesh;
         this.edgeConnectionPolicy = initialPolicy;
         this.traversals = new ArrayList<>();
@@ -73,7 +74,7 @@ public class ProjectMesh {
         return tFaces;
     }
 
-    public Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> getEdgeConnectionPolicy() {
+    public Map<QMeshEdge, TEdgeConnectionPolicy> getEdgeConnectionPolicy() {
         return edgeConnectionPolicy;
     }
 
