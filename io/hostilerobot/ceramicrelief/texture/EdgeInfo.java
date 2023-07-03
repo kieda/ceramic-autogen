@@ -1,6 +1,6 @@
 package io.hostilerobot.ceramicrelief.texture;
 
-import io.hostilerobot.ceramicrelief.imesh.IMesh;
+import io.hostilerobot.ceramicrelief.qmesh.QMesh;
 import io.hostilerobot.ceramicrelief.util.Hash;
 
 /**
@@ -19,11 +19,11 @@ public class EdgeInfo {
     private TEdgeConnectionPolicy policy;
 
     // the edge on the mesh that directly represents this edge
-    private IMesh<Object>.IMeshEdge meshEdge;
+    private QMesh.QMeshEdge meshEdge;
 
     public EdgeInfo(TEdge edge1, TEdge edge2,
                     TEdgeConnectionPolicy policy,
-                    IMesh<Object>.IMeshEdge meshEdge) {
+                    QMesh.QMeshEdge meshEdge) {
         this.edge1 = edge1;
         this.edge2 = edge2;
         this.policy = policy;
@@ -57,7 +57,7 @@ public class EdgeInfo {
         return edge2;
     }
 
-    public IMesh<Object>.IMeshEdge getMeshEdge() {
+    public QMesh.QMeshEdge getMeshEdge() {
         return meshEdge;
     }
 

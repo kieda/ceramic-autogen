@@ -1,4 +1,4 @@
-package io.hostilerobot.ceramicrelief.imesh;
+package io.hostilerobot.ceramicrelief.qmesh;
 
 import org.apache.commons.math.fraction.Fraction;
 
@@ -7,24 +7,24 @@ import java.util.Objects;
 /**
  * intermediate vertex representation. We use quotients rather than floats
  */
-public class IVertex3D {
+public class QVertex3D {
     // use fractions for extra spicy exactness and also so we don't have to deal with strange floating point BS
     private Fraction x;
     private Fraction y;
     private Fraction z;
 
-    public IVertex3D() {
+    public QVertex3D() {
         this.x = Fraction.ZERO;
         this.y = Fraction.ZERO;
         this.z = Fraction.ZERO;
     }
 
-    public IVertex3D(IVertex3D other) {
+    public QVertex3D(QVertex3D other) {
         this.x = other.x;
         this.y = other.y;
         this.z = other.z;
     }
-    public IVertex3D(Fraction x, Fraction y, Fraction z) {
+    public QVertex3D(Fraction x, Fraction y, Fraction z) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -46,7 +46,7 @@ public class IVertex3D {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        IVertex3D vertex3D = (IVertex3D) o;
+        QVertex3D vertex3D = (QVertex3D) o;
         return Objects.equals(x, vertex3D.x) && Objects.equals(y, vertex3D.y) && Objects.equals(z, vertex3D.z);
     }
 
@@ -55,19 +55,19 @@ public class IVertex3D {
         return Objects.hash(x, y, z);
     }
 
-    public Fraction dot(IVertex3D other) {
+    public Fraction dot(QVertex3D other) {
         return this.x.multiply(other.x)
                 .add(this.y.multiply(other.y))
                 .add(this.z.multiply(other.z));
     }
 
-    public IVertex3D cross(IVertex3D other) {
-        IVertex3D cross = new IVertex3D();
+    public QVertex3D cross(QVertex3D other) {
+        QVertex3D cross = new QVertex3D();
         cross(this, other, cross);
         return cross;
     }
 
-    public static void cross(IVertex3D v1, IVertex3D v2, IVertex3D dest) {
+    public static void cross(QVertex3D v1, QVertex3D v2, QVertex3D dest) {
         if(v1.equals(v2)) {
             dest.x = Fraction.ZERO;
             dest.y = Fraction.ZERO;
@@ -84,13 +84,13 @@ public class IVertex3D {
         dest.x = xd;
     }
 
-    public IVertex3D subtract(IVertex3D other) {
-        IVertex3D sub = new IVertex3D();
+    public QVertex3D subtract(QVertex3D other) {
+        QVertex3D sub = new QVertex3D();
         subtract(this, other, sub);
         return sub;
     }
 
-    public static void subtract(IVertex3D v1, IVertex3D v2, IVertex3D dest) {
+    public static void subtract(QVertex3D v1, QVertex3D v2, QVertex3D dest) {
         if(v1.equals(v2)) {
             dest.x = Fraction.ZERO;
             dest.y = Fraction.ZERO;
@@ -102,13 +102,13 @@ public class IVertex3D {
         dest.z = v1.z.subtract(v2.z);
     }
 
-    public IVertex3D add(IVertex3D other) {
-        IVertex3D add = new IVertex3D();
+    public QVertex3D add(QVertex3D other) {
+        QVertex3D add = new QVertex3D();
         add(this, other, add);
         return add;
     }
 
-    public static void add(IVertex3D v1, IVertex3D v2, IVertex3D dest) {
+    public static void add(QVertex3D v1, QVertex3D v2, QVertex3D dest) {
         dest.x = v1.x.add(v2.x);
         dest.y = v1.y.add(v2.y);
         dest.z = v1.z.add(v2.z);

@@ -1,6 +1,6 @@
 package io.hostilerobot.ceramicrelief.texture;
 
-import io.hostilerobot.ceramicrelief.imesh.IMesh;
+import io.hostilerobot.ceramicrelief.qmesh.QMesh;
 import javafx.geometry.Point2D;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleGraph;
@@ -60,9 +60,9 @@ public class ComposeProjections {
 
     // todo move to its own class
     private void createTGraph() {
-        Map<IMesh<Object>.IMeshEdge, TEdgeConnectionPolicy> connections = projection.getEdgeConnectionPolicy();
+        Map<QMesh<Object>.QMeshEdge, TEdgeConnectionPolicy> connections = projection.getEdgeConnectionPolicy();
         Map<Object, FaceInfo> faceMapping = projection.getFaceMapping(); // map mesh face to tface.
-        Graph<Object, IMesh<Object>.IMeshEdge> graph = projection.getBackingMesh().getMeshConnectivity();
+        Graph<Object, QMesh<Object>.QMeshEdge> graph = projection.getBackingMesh().getMeshConnectivity();
 
         // note: suppose we have a face in 3d (A, B, C) that is projected onto 2d (tA, tB, tC)
         // then A -> tA, B -> tB, C -> tC from our traversal, since we ensure the order.
@@ -71,8 +71,8 @@ public class ComposeProjections {
             TFace tFaceSource = projection.gettFaces().get(tFaceSourceId);
             textureConnections.addVertex(tFaceSource); // ensure this vertex exists
 
-            IMesh<Object>.IMeshFace meshFaceSource = projection.getBackingMesh().getFace(tFaceSource);
-            for(IMesh<Object>.IMeshEdge meshEdge : graph.iterables().edgesOf(meshFaceSourceId)) {
+            QMesh.QMeshFace meshFaceSource = projection.getBackingMesh().getFace(tFaceSource);
+            for(QMesh.QMeshEdge meshEdge : graph.iterables().edgesOf(meshFaceSourceId)) {
                 Object meshFaceDestId = meshEdge.getOtherFace(meshFaceSourceId);
                 // run through adjacent faces
                 int tFaceDestId = faceMapping.get(meshFaceDestId).getTFace();
@@ -83,7 +83,7 @@ public class ComposeProjections {
 
                 textureConnections.addVertex(tFaceDest); // ensure the target vertex exists in the graph
 
-                IMesh<Object>.IMeshFace meshFaceDest = projection.getBackingMesh().getFace(meshFaceDestId);
+                QMesh.QMeshFace meshFaceDest = projection.getBackingMesh().getFace(meshFaceDestId);
 
                 // retrieve the two edges from the texture
                 TEdge sourceEdge = null;

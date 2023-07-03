@@ -1,9 +1,6 @@
 package io.hostilerobot.ceramicrelief.texture;
 
-import io.hostilerobot.ceramicrelief.imesh.IMesh;
 import io.hostilerobot.ceramicrelief.util.Hash;
-
-import java.util.Objects;
 
 public class TEdge  {
     public TEdge(int v1, int v2) {

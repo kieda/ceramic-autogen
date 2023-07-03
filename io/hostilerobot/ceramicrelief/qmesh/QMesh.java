@@ -1,5 +1,4 @@
-package io.hostilerobot.ceramicrelief.imesh;
-
+package io.hostilerobot.ceramicrelief.qmesh;
 
 import io.hostilerobot.ceramicrelief.util.Hash;
 import org.apache.commons.math.fraction.Fraction;
@@ -18,7 +17,7 @@ import java.util.function.BiFunction;
  *
  * Use generic ID - if we want to have a string representation for built objects vs integer for generated
  */
-public class IMesh<ID> {
+public class QMesh<ID> {
     /**
      * cache mesh edge. Used to find edges that are the same in 3d space, and only used internally in IMesh
      * to build a graph among faces that share an edge. Note that more than two faces may share an edge in 3d space
@@ -61,13 +60,13 @@ public class IMesh<ID> {
         }
     }
 
-    public class IMeshEdge {
+    public class QMeshEdge {
         // represents IDs for two adjacent edges in the mesh
         // this is more specific than CMeshEdge, as more than two faces in the mesh can share an edge.
         // However, we disallow two faces from sharing more than one edge
         private final ID face1, face2;
 
-        public IMeshEdge(ID face1, ID face2) {
+        public QMeshEdge(ID face1, ID face2) {
             this.face1 = face1;
             this.face2 = face2;
         }
@@ -76,7 +75,7 @@ public class IMesh<ID> {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            IMeshEdge that = (IMeshEdge) o;
+            QMeshEdge that = (QMeshEdge) o;
 
             // it's the same edge if we're switching up the order
             return (getFace1().equals(that.getFace2()) && getFace2().equals(that.getFace2()))
@@ -106,14 +105,14 @@ public class IMesh<ID> {
             return getFace1() + " -- " + getFace2();
         }
     }
-    public class IMeshFace {
+    public class QMeshFace {
         // id for the face in the mesh
         private final ID face;
         // ids for vertices of the face
         private final ID v1;
         private final ID v2;
         private final ID v3;
-        private IMeshFace(ID face, ID v1, ID v2, ID v3) {
+        private QMeshFace(ID face, ID v1, ID v2, ID v3) {
             this.face = face; // this face's ID
             this.v1 = v1;
             this.v2 = v2;
@@ -130,30 +129,30 @@ public class IMesh<ID> {
         public ID getV3() {
             return v3;
         }
-        public IVertex3D getVertex1() {
+        public QVertex3D getVertex1() {
             return vertices.get(getV1());
         }
-        public IVertex3D getVertex2() {
+        public QVertex3D getVertex2() {
             return vertices.get(getV2());
         }
-        public IVertex3D getVertex3() {
+        public QVertex3D getVertex3() {
             return vertices.get(getV3());
         }
 
         // normal that has not (yet) changed to a unit vector
-        public IVertex3D getNormal() {
-            IVertex3D normal;
+        public QVertex3D getNormal() {
+            QVertex3D normal;
 
             if((normal = normals.get(face)) != null) {
                 return normal;
             } else {
-                IVertex3D len12 = new IVertex3D();
-                IVertex3D len23 = new IVertex3D();
+                QVertex3D len12 = new QVertex3D();
+                QVertex3D len23 = new QVertex3D();
 
                 // return (vertex2 - vertex1) x (vertex3 - vertex2)
-                IVertex3D.subtract(getVertex2(), getVertex1(), len12);
-                IVertex3D.subtract(getVertex3(), getVertex2(), len23);
-                IVertex3D.cross(len12, len23, len23);
+                QVertex3D.subtract(getVertex2(), getVertex1(), len12);
+                QVertex3D.subtract(getVertex3(), getVertex2(), len23);
+                QVertex3D.cross(len12, len23, len23);
                 return len23;
             }
         }
@@ -166,16 +165,16 @@ public class IMesh<ID> {
     private Map<ID, Map<ID, CMeshEdge>> edgeCache; // cache the existing edges so we'll use the same objects
     private Map<CMeshEdge, Set<ID>> edgeConnectivity; // keep track of edges and the faces that are attached to it
 
-    private Map<ID, IVertex3D> vertices;
-    private Map<ID, IMeshFace> faces;
-    private Map<ID, IVertex3D> normals; // map from the face ID to the normal for the face
+    private Map<ID, QVertex3D> vertices;
+    private Map<ID, QMeshFace> faces;
+    private Map<ID, QVertex3D> normals; // map from the face ID to the normal for the face
 
-    private Graph<ID, IMeshEdge> meshConnectivity;
+    private Graph<ID, QMeshEdge> meshConnectivity;
         // auto-built graph that keeps track of the connectivity along edges of faces
         // V: Face tag
         // E: Edge in the mesh, represented by two vertex tags.
 
-    public IMesh() {
+    public QMesh() {
         // make the following linked
         this.vertices = new LinkedHashMap<>();
         this.faces = new LinkedHashMap<>();
@@ -207,22 +206,22 @@ public class IMesh<ID> {
         }
     }
 
-    public Graph<ID, IMeshEdge> getMeshConnectivity() {
+    public Graph<ID, QMeshEdge> getMeshConnectivity() {
         return meshConnectivity;
     }
 
-    public IVertex3D getVertex(ID id) {
+    public QVertex3D getVertex(ID id) {
         return vertices.get(id);
     }
-    public IMeshFace getFace(ID id) {
+    public QMeshFace getFace(ID id) {
         return faces.get(id);
     }
 
-    public IMesh<ID> addVertex(ID id, Fraction x, Fraction y, Fraction z) {
-        return addVertex(id, new IVertex3D(x, y, z));
+    public QMesh<ID> addVertex(ID id, Fraction x, Fraction y, Fraction z) {
+        return addVertex(id, new QVertex3D(x, y, z));
     }
 
-    public IMesh<ID> addVertex(ID id, IVertex3D vertex) {
+    public QMesh<ID> addVertex(ID id, QVertex3D vertex) {
         if(edgeConnectivity == null) {
             throw new IllegalStateException("Cannot add new vertices to an IMesh that has been cleaned");
         }
@@ -237,7 +236,7 @@ public class IMesh<ID> {
      * @param v3 the ID for the third vertex
      * @return this Mesh
      */
-    public IMesh<ID> addTriangle(ID id, ID v1, ID v2, ID v3) {
+    public QMesh<ID> addTriangle(ID id, ID v1, ID v2, ID v3) {
         if(edgeConnectivity == null) {
             throw new IllegalStateException("Cannot add a new triangle to an IMesh that has been cleaned");
         }
@@ -245,7 +244,7 @@ public class IMesh<ID> {
             throw new NoSuchElementException("Mesh does not contain all vertices (" + v1 + ", " + v2 + ", " + v3 + ")");
         }
 
-        faces.put(id, new IMeshFace(id, v1, v2, v3));
+        faces.put(id, new QMeshFace(id, v1, v2, v3));
         meshConnectivity.addVertex(id); // add a vertex for the face.
 
         BiFunction<CMeshEdge, Set<ID>, Set<ID>> addFaceFn = (edge, faces) -> {
@@ -258,11 +257,11 @@ public class IMesh<ID> {
                 // don't add an edge between faces that are already connected
                 if(!Objects.equals(face, id)) {
                     if(!meshConnectivity.containsEdge(id, face)) {
-                        meshConnectivity.addEdge(id, face, new IMeshEdge(id, face));
+                        meshConnectivity.addEdge(id, face, new QMeshEdge(id, face));
                     }
                     if(!meshConnectivity.containsEdge(face, id)) {
                         // bidirectional support in case we want to swap out the graph type
-                        meshConnectivity.addEdge(face, id, new IMeshEdge(face, id));
+                        meshConnectivity.addEdge(face, id, new QMeshEdge(face, id));
                     }
                 }
             }

@@ -1,6 +1,6 @@
 package io.hostilerobot.ceramicrelief.texture;
 
-import io.hostilerobot.ceramicrelief.imesh.IMesh;
+import io.hostilerobot.ceramicrelief.qmesh.QMesh;
 import javafx.geometry.Point2D;
 
 import java.util.*;
@@ -15,25 +15,25 @@ import java.util.*;
  */
 public class ProjectMesh {
     // initial mesh
-    private final IMesh<Object> backingMesh;
+    private final QMesh<Object> backingMesh;
 
     // the result of traversing through the mesh
     private final List<MeshProjectionTraversal> traversals;
     private final List<TFace> tFaces;
     private final List<Point2D> tVertices;
     private final Map<Object, FaceInfo> faceMapping;
-    private final Map<IMesh<Object>.IMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy;
+    private final Map<QMesh<Object>.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy;
 
-    public ProjectMesh(IMesh<Object> backingMesh) {
+    public ProjectMesh(QMesh<Object> backingMesh) {
         this(new HashMap<>(), backingMesh);
     }
-    public ProjectMesh(IMesh<Object> backingMesh,
-        Map<IMesh<Object>.IMeshEdge, TEdgeConnectionPolicy> userPolicy) {
+    public ProjectMesh(QMesh<Object> backingMesh,
+                       Map<QMesh<Object>.QMeshEdge, TEdgeConnectionPolicy> userPolicy) {
         this(new HashMap<>(userPolicy), backingMesh);
     }
 
     // private constructor, also sets all data structures
-    private ProjectMesh(Map<IMesh<Object>.IMeshEdge, TEdgeConnectionPolicy> initialPolicy, IMesh<Object> backingMesh) {
+    private ProjectMesh(Map<QMesh<Object>.QMeshEdge, TEdgeConnectionPolicy> initialPolicy, QMesh<Object> backingMesh) {
         this.backingMesh = backingMesh;
         this.edgeConnectionPolicy = initialPolicy;
         this.traversals = new ArrayList<>();
@@ -83,7 +83,7 @@ public class ProjectMesh {
         return traversals;
     }
 
-    public IMesh<Object> getBackingMesh() {
+    public QMesh<Object> getBackingMesh() {
         return backingMesh;
     }
 
@@ -95,7 +95,7 @@ public class ProjectMesh {
         return tFaces;
     }
 
-    public Map<IMesh<Object>.IMeshEdge, TEdgeConnectionPolicy> getEdgeConnectionPolicy() {
+    public Map<QMesh<Object>.QMeshEdge, TEdgeConnectionPolicy> getEdgeConnectionPolicy() {
         return edgeConnectionPolicy;
     }
 
