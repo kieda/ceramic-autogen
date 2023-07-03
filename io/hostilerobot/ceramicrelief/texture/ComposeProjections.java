@@ -47,7 +47,7 @@ public class ComposeProjections {
 
             int vertexCount = traversal.getTVertexCount();
             int vertexEnd = currentVertex + vertexCount;
-            List<Point2D> vertices = projection.gettVertices();
+            List<Point2D> vertices = projection.getTVertices();
             for(int vert = currentVertex; vert < vertexEnd; vert++) {
                 Point2D vertex = vertices.get(vert);
                 Point2D translated = vertex.add(translateX, translateY);
@@ -68,7 +68,7 @@ public class ComposeProjections {
         // then A -> tA, B -> tB, C -> tC from our traversal, since we ensure the order.
         for(int meshFaceSourceId : graph.iterables().vertices()) {
             int tFaceSourceId = faceMapping.getTFace(meshFaceSourceId);
-            TFace tFaceSource = projection.gettFaces().get(tFaceSourceId);
+            TFace tFaceSource = projection.getTFaces().get(tFaceSourceId);
             textureConnections.addVertex(tFaceSource); // ensure this vertex exists
 
             QMesh.QMeshFace meshFaceSource = projection.getBackingMesh().getFace(meshFaceSourceId);
@@ -76,7 +76,7 @@ public class ComposeProjections {
                 int meshFaceDestId = meshEdge.getOtherFace(meshFaceSourceId);
                 // run through adjacent faces
                 int tFaceDestId = faceMapping.getTFace(meshFaceDestId);
-                TFace tFaceDest = projection.gettFaces().get(tFaceDestId);
+                TFace tFaceDest = projection.getTFaces().get(tFaceDestId);
                 if(textureConnections.containsEdge(tFaceSource, tFaceDest))
                     // if the edge already exists in the graph no need to process it again
                     continue;

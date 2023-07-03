@@ -65,11 +65,11 @@ public class ProjectMesh {
         return backingMesh;
     }
 
-    public List<Point2D> gettVertices() {
+    public List<Point2D> getTVertices() {
         return tVertices;
     }
 
-    public List<TFace> gettFaces() {
+    public List<TFace> getTFaces() {
         return tFaces;
     }
 

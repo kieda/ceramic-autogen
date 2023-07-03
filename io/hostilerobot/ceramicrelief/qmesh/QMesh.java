@@ -179,12 +179,9 @@ public class QMesh {
     private List<Map<Integer, CMeshEdge>> edgeCache; // cache the existing edges so we'll use the same objects
     private Map<CMeshEdge, Set<Integer>> edgeConnectivity; // keep track of edges and the faces that are attached to it
 
-//    private Map<ID, QVertex3D> vertices;
     private List<QVertex3D> vertices;
-//    private Map<ID, QMeshFace> faces;
     private List<QMeshFace> faces;
     private List<QVertex3D> normals; // map from the face ID to the normal for the face
-//    private Map<ID, QVertex3D> normals; // map from the face ID to the normal for the face
 
     private Graph<Integer, QMeshEdge> meshConnectivity;
         // auto-built graph that keeps track of the connectivity along edges of faces
