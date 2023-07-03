@@ -60,22 +60,22 @@ public class ComposeProjections {
 
     // todo move to its own class
     private void createTGraph() {
-        Map<QMesh<Object>.QMeshEdge, TEdgeConnectionPolicy> connections = projection.getEdgeConnectionPolicy();
-        Map<Object, FaceInfo> faceMapping = projection.getFaceMapping(); // map mesh face to tface.
-        Graph<Object, QMesh<Object>.QMeshEdge> graph = projection.getBackingMesh().getMeshConnectivity();
+        Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> connections = projection.getEdgeConnectionPolicy();
+        FaceMappingInfo faceMapping = projection.getFaceMapping(); // map mesh face to tface.
+        Graph<Integer, QMesh.QMeshEdge> graph = projection.getBackingMesh().getMeshConnectivity();
 
         // note: suppose we have a face in 3d (A, B, C) that is projected onto 2d (tA, tB, tC)
         // then A -> tA, B -> tB, C -> tC from our traversal, since we ensure the order.
-        for(Object meshFaceSourceId : graph.iterables().vertices()) {
-            int tFaceSourceId = faceMapping.get(meshFaceSourceId).getTFace();
+        for(int meshFaceSourceId : graph.iterables().vertices()) {
+            int tFaceSourceId = faceMapping.getTFace(meshFaceSourceId);
             TFace tFaceSource = projection.gettFaces().get(tFaceSourceId);
             textureConnections.addVertex(tFaceSource); // ensure this vertex exists
 
-            QMesh.QMeshFace meshFaceSource = projection.getBackingMesh().getFace(tFaceSource);
+            QMesh.QMeshFace meshFaceSource = projection.getBackingMesh().getFace(meshFaceSourceId);
             for(QMesh.QMeshEdge meshEdge : graph.iterables().edgesOf(meshFaceSourceId)) {
-                Object meshFaceDestId = meshEdge.getOtherFace(meshFaceSourceId);
+                int meshFaceDestId = meshEdge.getOtherFace(meshFaceSourceId);
                 // run through adjacent faces
-                int tFaceDestId = faceMapping.get(meshFaceDestId).getTFace();
+                int tFaceDestId = faceMapping.getTFace(meshFaceDestId);
                 TFace tFaceDest = projection.gettFaces().get(tFaceDestId);
                 if(textureConnections.containsEdge(tFaceSource, tFaceDest))
                     // if the edge already exists in the graph no need to process it again

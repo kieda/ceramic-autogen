@@ -104,21 +104,21 @@ class MeshProjectionTraversal {
     }
 
     private static class HeapElem{
-        private Object vertexToPlace;
-        private Object faceId; // id of the face in 3d we're attempting to place down
+        private boolean isWindingSame; // is the winding the same between the two edges?
+        private int vertexToPlace;
+        private int faceId; // id of the face in 3d we're attempting to place down
+        private int oppositeTVertex; // tVertex on the opposite side from edge2d
         private QMesh.QMeshEdge adjacentFace; // edge in 3d that connects to this face (or null if it's the first item)
         private TEdge edge2d;  // edge in 2d that connects to the face (this is the translation from edge3d to the 2d plain)
         private QVertex3D edgeVector; // vector that describes the adjacent edge we're laying down
         private QVertex3D triVector; // vector that describes the new triangle we're laying down
         private TEdgeConnectionPolicy connectionPolicy;
-        private boolean isWindingSame; // is the winding the same between the two edges?
-        private int oppositeTVertex; // tVertex on the opposite side from edge2d
-        public HeapElem(Object faceId) {
+        public HeapElem(int faceId) {
             this.faceId = faceId;
             edge2d = null;
             adjacentFace = null;
         }
-        public HeapElem(Object faceId, QMesh.QMeshEdge adjacentFace) {
+        public HeapElem(int faceId, QMesh.QMeshEdge adjacentFace) {
             this.faceId = faceId;
             this.adjacentFace = adjacentFace;
         }
@@ -128,7 +128,7 @@ class MeshProjectionTraversal {
         public boolean placeAllVertices() {
             return edge2d == null;
         }
-        public Object getVertexToPlace() {
+        public int getVertexToPlace() {
             return vertexToPlace;
         }
     }
@@ -264,23 +264,23 @@ class MeshProjectionTraversal {
 
     private static void prepareConnectionPolicy(
             HeapElem reference,
-            Map<QMesh<Object>.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
+            Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
         // populate policy: set it to default if it's not already defined
         reference.connectionPolicy = edgeConnectionPolicy.computeIfAbsent(reference.adjacentFace,
-                k -> TEdgeConnectionPolicy.getDefaultPolicy(reference.isWindingSame));;
+                k -> TEdgeConnectionPolicy.getDefaultPolicy(reference.isWindingSame));
         assert reference.connectionPolicy != null; // policy should be set too.
     }
 
     public MeshProjectionTraversal(
             // inputs
-            Object initialFace,
-            QMesh<Object> backingMesh,
+            int initialFace,
+            QMesh backingMesh,
 
             // these parameters are modified during the traversal
             List<TFace> tFaces,
             List<Point2D> tVertices,
-            Map<Object, FaceInfo> faceMapping,
-            Map<QMesh<Object>.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
+            FaceMappingInfo faceMapping,
+            Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
         traverse(initialFace, backingMesh,
                 tFaces, tVertices,
                 faceMapping, edgeConnectionPolicy);
@@ -303,34 +303,34 @@ class MeshProjectionTraversal {
         bounds.union(p3);
     }
 
-    private void traverse(Object initialFace, QMesh<Object> backingMesh,
+    private void traverse(int initialMeshFace, QMesh backingMesh,
                           List<TFace> tFaces, List<Point2D> tVertices,
-                          Map<Object, FaceInfo> faceMapping,
-                          Map<QMesh<Object>.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
+                          FaceMappingInfo faceMapping,
+                          Map<QMesh.QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
         // way to test for intersection among 3d triangles in a 2d plane
         // start with an empty intersection test each time we begin traversing the mesh.
         RTree<TFace, Triangle2D> intersectionTest = RTree.create();
         PairingHeap<HeapOrder, HeapElem> heap = new PairingHeap<>(HEAP_ORDER_COMPARATOR);
-        Graph<Object, QMesh<Object>.QMeshEdge> connectivity = backingMesh.getMeshConnectivity();
+        Graph<Integer, QMesh.QMeshEdge> connectivity = backingMesh.getMeshConnectivity();
 
         // add an initial element
-        HeapOrder initialOrder = new HeapOrder(faceMapping.get(initialFace).getFaceOrder());
-        HeapElem initialElem = new HeapElem(initialFace);
+        HeapOrder initialOrder = new HeapOrder(initialMeshFace);
+        HeapElem initialElem = new HeapElem(initialMeshFace);
         heap.insert(initialOrder, initialElem);
 
         while(!heap.isEmpty()) {
             // get an item off the heap
             AddressableHeap.Handle<HeapOrder, HeapElem> item = heap.deleteMin();
             HeapElem elem = item.getValue();
-            Object currentFaceId = elem.faceId;
+            int currentMeshFaceId = elem.faceId;
 
             // we already placed this item from the heap.
             // note we may have duplicates of the 3d face in the heap if we add it along different connecting edges
-            if(faceMapping.get(currentFaceId).isFacePlacedOnTexture()) {
+            if(faceMapping.isFacePlacedOnTexture(currentMeshFaceId)) {
                 continue;
             }
 
-            QMesh.QMeshFace faceToPlace = backingMesh.getFace(currentFaceId);
+            QMesh.QMeshFace faceToPlace = backingMesh.getFace(currentMeshFaceId);
 
             TEdge adjacentEdge2d = elem.edge2d;
 
@@ -342,7 +342,7 @@ class MeshProjectionTraversal {
             {
                 QVertex3D v12;
                 if(!elem.placeAllVertices()) {
-                    assert faceMapping.get(elem.adjacentFace.getOtherFace(faceToPlace)).isFacePlacedOnTexture();
+                    assert faceMapping.isFacePlacedOnTexture(elem.adjacentFace.getOtherFace(currentMeshFaceId));
                     // the existing face must already be placed on the texture.
 
                     assert elem.canBeConnected(); // we should only add edges to the heap that can be connected
@@ -467,16 +467,15 @@ class MeshProjectionTraversal {
             if(!elem.placeAllVertices()) {
                 Integer commonTVertex = null;
                 double currentMinDistance = 0; // set this for java compiler. However this is guaranteed to be set before it is read from.
-                for(QMesh.QMeshEdge outgoing : connectivity.iterables().edgesOf(currentFaceId)) {
-                    Object otherFaceId = Graphs.getOppositeVertex(connectivity, outgoing, currentFaceId);
+                for(QMesh.QMeshEdge outgoing : connectivity.iterables().edgesOf(currentMeshFaceId)) {
+                    int otherMeshFaceId = Graphs.getOppositeVertex(connectivity, outgoing, currentMeshFaceId);
                     // graph connection from otherFaceId to currentFaceId
-                    FaceInfo faceInfo = faceMapping.get(otherFaceId);
-                    if(faceInfo.isFacePlacedOnTexture()) {
-                        TFace adjacentTexture = tFaces.get(faceInfo.getTFace());
+                    if(faceMapping.isFacePlacedOnTexture(otherMeshFaceId)) {
+                        TFace adjacentTexture = tFaces.get(faceMapping.getTFace(otherMeshFaceId));
 
                         // if the neighboring face is already placed on the texture, we may can consolidate the
                         // new point to an existing one if they're very close together
-                        QMesh.QMeshFace adjacentFace = backingMesh.getFace(otherFaceId);
+                        QMesh.QMeshFace adjacentFace = backingMesh.getFace(otherMeshFaceId);
                         // find vertex in common with insertedPoint
 
                         int adjacentTIndex;
@@ -549,24 +548,24 @@ class MeshProjectionTraversal {
             }
 
             // add the new face to our list of faces
-            int newFaceId = tFaces.size();
-            faceMapping.get(currentFaceId).setTFace(newFaceId); // update our mapping
+            int newTFaceId = tFaces.size();
+            faceMapping.setTFace(currentMeshFaceId, newTFaceId); // update our mapping
             tFaces.add(newFace);
             tFaceCount++;
             intersectionTest = intersectionTest.add(newFace, newTriangle);
 
             // run through the edges that connect to the current one
-            for(QMesh<Object>.QMeshEdge edge : connectivity.iterables().edgesOf(currentFaceId)) {
+            for(QMesh.QMeshEdge edge : connectivity.iterables().edgesOf(currentMeshFaceId)) {
                 // id of the other face
-                Object otherFaceId = Graphs.getOppositeVertex(connectivity, edge, currentFaceId);
+                int otherMeshFaceId = Graphs.getOppositeVertex(connectivity, edge, currentMeshFaceId);
                 // this face is already placed on the texture. We don't process it.
-                if(faceMapping.get(otherFaceId).isFacePlacedOnTexture())
+                if(faceMapping.isFacePlacedOnTexture(otherMeshFaceId))
                     continue;
-                QMesh<Object>.QMeshFace currentFace = backingMesh.getFace(currentFaceId);
-                QMesh<Object>.QMeshFace otherFace = backingMesh.getFace(otherFaceId);
+                QMesh.QMeshFace currentFace = backingMesh.getFace(currentMeshFaceId);
+                QMesh.QMeshFace otherFace = backingMesh.getFace(otherMeshFaceId);
 
                 // traverse to the new face (eventually) by putting it onto the heap
-                HeapElem newElem = new HeapElem(otherFaceId, edge);
+                HeapElem newElem = new HeapElem(otherMeshFaceId, edge);
                 prepareForPlacement(currentFace, otherFace, newFace, newElem); // populate information for the HeapElem so it can be placed on the 2d texture
                 prepareConnectionPolicy(newElem, edgeConnectionPolicy);
 
@@ -584,7 +583,7 @@ class MeshProjectionTraversal {
                 // (E - D) x (F - E) = normalOther
                 // normalCurrent . normalOther = ||normalCurrent|| * ||normalOther|| cos(theta)
                 double ranking = getRanking(currentFace, otherFace);
-                HeapOrder newElemOrder = new HeapOrder(faceMapping.get(otherFaceId).getFaceOrder(),
+                HeapOrder newElemOrder = new HeapOrder(otherMeshFaceId,
                         newElem.edge2d, ranking);
 
                 heap.insert(newElemOrder, newElem);

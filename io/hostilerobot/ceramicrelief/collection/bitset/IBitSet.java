@@ -1,6 +1,6 @@
 package io.hostilerobot.ceramicrelief.collection.bitset;
 
-interface IBitSet {
+public interface IBitSet {
     boolean isEmpty();
     // for fixed capacity bitsets
     boolean canOr(IBitSet other);

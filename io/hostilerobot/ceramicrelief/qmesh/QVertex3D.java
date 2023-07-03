@@ -33,13 +33,28 @@ public class QVertex3D {
     public Fraction getX() {
         return x;
     }
-
     public Fraction getY() {
         return y;
     }
-
     public Fraction getZ() {
         return z;
+    }
+
+    public void setX(Fraction x) {
+        this.x = x;
+    }
+
+    public void setY(Fraction y) {
+        this.y = y;
+    }
+
+    public void setZ(Fraction z) {
+        this.z = z;
+    }
+    public void set(Fraction x, Fraction y, Fraction z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
     }
 
     @Override
