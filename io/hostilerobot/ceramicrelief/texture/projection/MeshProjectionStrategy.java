@@ -2,7 +2,7 @@ package io.hostilerobot.ceramicrelief.texture.projection;
 
 import io.hostilerobot.ceramicrelief.qmesh.QMesh;
 import io.hostilerobot.ceramicrelief.qmesh.QMeshEdge;
-import io.hostilerobot.ceramicrelief.texture.data_tex.TEdgeConnectionPolicy;
+import io.hostilerobot.ceramicrelief.texture.TEdgeConnectionPolicy;
 
 import java.util.Map;
 

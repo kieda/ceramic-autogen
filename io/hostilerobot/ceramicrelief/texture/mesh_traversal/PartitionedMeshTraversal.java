@@ -1,7 +1,7 @@
 package io.hostilerobot.ceramicrelief.texture.mesh_traversal;
 
 import io.hostilerobot.ceramicrelief.qmesh.QMesh;
-import io.hostilerobot.ceramicrelief.texture.data_projection.ProjectionState;
+import io.hostilerobot.ceramicrelief.texture.projection.ProjectionState;
 import io.hostilerobot.ceramicrelief.texture.projection.MeshProjectionResult;
 
 import java.util.*;

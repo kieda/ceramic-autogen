@@ -1,4 +1,4 @@
-package io.hostilerobot.ceramicrelief.texture.data_projection;
+package io.hostilerobot.ceramicrelief.texture.projection;
 
 import java.util.Arrays;
 

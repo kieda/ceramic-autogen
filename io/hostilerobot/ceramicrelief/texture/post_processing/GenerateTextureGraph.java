@@ -3,13 +3,13 @@ package io.hostilerobot.ceramicrelief.texture.post_processing;
 import io.hostilerobot.ceramicrelief.qmesh.QMesh;
 import io.hostilerobot.ceramicrelief.qmesh.QMeshEdge;
 import io.hostilerobot.ceramicrelief.qmesh.QMeshFace;
-import io.hostilerobot.ceramicrelief.texture.data_projection.EdgeInfo;
-import io.hostilerobot.ceramicrelief.texture.data_projection.FaceMappingInfo;
-import io.hostilerobot.ceramicrelief.texture.data_projection.ProjectionState;
+import io.hostilerobot.ceramicrelief.texture.projection.EdgeInfo;
+import io.hostilerobot.ceramicrelief.texture.projection.FaceMappingInfo;
+import io.hostilerobot.ceramicrelief.texture.projection.ProjectionState;
 import io.hostilerobot.ceramicrelief.texture.projection.MeshProjectionResult;
-import io.hostilerobot.ceramicrelief.texture.data_tex.TEdge;
-import io.hostilerobot.ceramicrelief.texture.data_tex.TEdgeConnectionPolicy;
-import io.hostilerobot.ceramicrelief.texture.data_tex.TFace;
+import io.hostilerobot.ceramicrelief.texture.TEdge;
+import io.hostilerobot.ceramicrelief.texture.TEdgeConnectionPolicy;
+import io.hostilerobot.ceramicrelief.texture.TFace;
 import org.jgrapht.Graph;
 
 class GenerateTextureGraph {

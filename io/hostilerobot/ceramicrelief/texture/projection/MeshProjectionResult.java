@@ -1,8 +1,6 @@
 package io.hostilerobot.ceramicrelief.texture.projection;
 
-import io.hostilerobot.ceramicrelief.texture.data_projection.EdgeInfo;
-import io.hostilerobot.ceramicrelief.texture.data_projection.FaceMappingInfo;
-import io.hostilerobot.ceramicrelief.texture.data_tex.TFace;
+import io.hostilerobot.ceramicrelief.texture.TFace;
 import javafx.geometry.Point2D;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleGraph;

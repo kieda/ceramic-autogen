@@ -1,4 +1,4 @@
-package io.hostilerobot.ceramicrelief.texture.data_tex;
+package io.hostilerobot.ceramicrelief.texture;
 
 import io.hostilerobot.ceramicrelief.util.Hash;
 

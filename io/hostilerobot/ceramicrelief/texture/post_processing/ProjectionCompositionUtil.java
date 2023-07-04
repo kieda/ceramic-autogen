@@ -1,6 +1,6 @@
 package io.hostilerobot.ceramicrelief.texture.post_processing;
 
-import io.hostilerobot.ceramicrelief.texture.data_projection.ProjectionState;
+import io.hostilerobot.ceramicrelief.texture.projection.ProjectionState;
 import io.hostilerobot.ceramicrelief.texture.mesh_traversal.ProjectedTextureInfo;
 import javafx.geometry.Point2D;
 
