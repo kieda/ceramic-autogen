@@ -1,4 +1,4 @@
-package io.hostilerobot.ceramicrelief.texture;
+package io.hostilerobot.ceramicrelief.texture.data_tex;
 
 public class TFace {
     private final int v1;

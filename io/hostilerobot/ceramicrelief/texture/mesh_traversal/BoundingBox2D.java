@@ -1,4 +1,4 @@
-package io.hostilerobot.ceramicrelief.texture;
+package io.hostilerobot.ceramicrelief.texture.mesh_traversal;
 
 import javafx.geometry.Point2D;
 

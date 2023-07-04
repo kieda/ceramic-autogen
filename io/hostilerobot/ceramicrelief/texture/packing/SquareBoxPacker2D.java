@@ -1,6 +1,6 @@
 package io.hostilerobot.ceramicrelief.texture.packing;
 
-import io.hostilerobot.ceramicrelief.texture.BoundingBox2D;
+import io.hostilerobot.ceramicrelief.texture.mesh_traversal.BoundingBox2D;
 import javafx.geometry.Point2D;
 
 import java.util.List;

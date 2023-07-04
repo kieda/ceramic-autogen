@@ -1,6 +1,8 @@
-package io.hostilerobot.ceramicrelief.texture;
+package io.hostilerobot.ceramicrelief.texture.data_projection;
 
 import io.hostilerobot.ceramicrelief.qmesh.QMeshEdge;
+import io.hostilerobot.ceramicrelief.texture.data_tex.TEdge;
+import io.hostilerobot.ceramicrelief.texture.data_tex.TEdgeConnectionPolicy;
 import io.hostilerobot.ceramicrelief.util.Hash;
 
 /**

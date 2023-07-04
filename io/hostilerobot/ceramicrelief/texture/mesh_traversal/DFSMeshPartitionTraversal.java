@@ -1,4 +1,4 @@
-package io.hostilerobot.ceramicrelief.texture;
+package io.hostilerobot.ceramicrelief.texture.mesh_traversal;
 
 import com.github.davidmoten.rtree2.Entry;
 import com.github.davidmoten.rtree2.RTree;
@@ -8,6 +8,12 @@ import io.hostilerobot.ceramicrelief.qmesh.QMesh;
 import io.hostilerobot.ceramicrelief.qmesh.QMeshEdge;
 import io.hostilerobot.ceramicrelief.qmesh.QMeshFace;
 import io.hostilerobot.ceramicrelief.qmesh.QVertex3D;
+import io.hostilerobot.ceramicrelief.texture.data_projection.FaceMappingInfo;
+import io.hostilerobot.ceramicrelief.texture.data_projection.ProjectionState;
+import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangle2D;
+import io.hostilerobot.ceramicrelief.texture.data_tex.TEdge;
+import io.hostilerobot.ceramicrelief.texture.data_tex.TEdgeConnectionPolicy;
+import io.hostilerobot.ceramicrelief.texture.data_tex.TFace;
 import javafx.geometry.Point2D;
 import org.apache.commons.math.fraction.Fraction;
 import org.apache.commons.math.util.FastMath;
@@ -21,7 +27,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * represents a traversal starting from an individual face in the IMesh, and places down as many adjacent faces as possible
+ *
+ * projects a partition of a 3d mesh to 2d space. Does this by BFS traversal from each face.
+ * Creates a series of contiguous polygons comprised of 2d triangles. Each polygon
+ * represent a disjoint subset of the faces on the 3d mesh, such that all faces are placed.
+ *
+ * the traversal starts from an individual face in the IMesh, and places down as many adjacent faces as possible
+ *
  *
  * inputs:
  *      ID initialFace  -- face we start the traversal with
@@ -34,21 +46,12 @@ import java.util.Map;
  * modified/accumulated:
  *      Map<ID, FaceInfo> faceMapping -- mapping from the 3d face to its representation in tFaces
  *      Map<IMeshEdge, TEdgeConnectionPolicy> -- mapping from distinct 3d edges to how they should be connected in 2d
- *
- * todo: refactor such that data is its own structure we can pass around, then we have an implementation function
- *       that transforms the data. Currently, doing all the work in the constructor is a dumb design pattern
  */
-class MeshProjectionTraversal {
+public class DFSMeshPartitionTraversal implements MeshPartitionTraversal {
     // "close enough" distance for two points to be considered equal to another
     // things might not be exact due to the nature of double floating point errors
     private final static double EPSILON = 0.0001;
     private final static double EPSILON_SQ = EPSILON * EPSILON;
-
-    // the number of faces and vertices we added during this traversal
-    private int tFaceCount = 0;
-    private int tVertexCount = 0;
-    // if null, no points added yet (empty bounding box)
-    private BoundingBox2D bounds = null;
 
     private static void populateEdge1_2(QMesh mesh, QMeshFace faceToAdd, HeapElem reference) {
         QVertex3D v2 = mesh.getVertex(faceToAdd.getV2());
@@ -273,42 +276,22 @@ class MeshProjectionTraversal {
         assert reference.connectionPolicy != null; // policy should be set too.
     }
 
-    public MeshProjectionTraversal(
-            // inputs
-            int initialFace,
-            QMesh backingMesh,
 
-            // these parameters are modified during the traversal
-            List<TFace> tFaces,
-            List<Point2D> tVertices,
-            FaceMappingInfo faceMapping,
-            Map<QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
-        traverse(initialFace, backingMesh,
-                tFaces, tVertices,
-                faceMapping, edgeConnectionPolicy);
+    @Override
+    public ProjectedTextureInfo projectSubset(int initialFace, ProjectionState projectionState) {
+        return traverse(initialFace, projectionState.getMesh(),
+                projectionState.getProjection().getTFaces(),
+                projectionState.getProjection().getTVertices(),
+                projectionState.getProjection().getFaceMapping(),
+                projectionState.getConnections());
     }
 
-    private void addPoint(Point2D point) {
-        if(bounds == null) {
-            bounds = BoundingBox2D.fromPoint(point);
-        } else {
-            bounds.union(point);
-        }
-    }
-    private void addPoints(Point2D p1, Point2D p2, Point2D p3) {
-        if(bounds == null) {
-            bounds = BoundingBox2D.fromPoint(p1);
-        } else {
-            bounds.union(p1);
-        }
-        bounds.union(p2);
-        bounds.union(p3);
-    }
+    private ProjectedTextureInfo traverse(int initialMeshFace, QMesh backingMesh,
+                                          List<TFace> tFaces, List<Point2D> tVertices,
+                                          FaceMappingInfo faceMapping,
+                                          Map<QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
 
-    private void traverse(int initialMeshFace, QMesh backingMesh,
-                          List<TFace> tFaces, List<Point2D> tVertices,
-                          FaceMappingInfo faceMapping,
-                          Map<QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy) {
+        ProjectedTextureInfo result = new ProjectedTextureInfo();
         // way to test for intersection among 3d triangles in a 2d plane
         // start with an empty intersection test each time we begin traversing the mesh.
         RTree<TFace, Triangle2D> intersectionTest = RTree.create();
@@ -515,8 +498,7 @@ class MeshProjectionTraversal {
                     // thus we add a new point to our array.
                     newIndex = tVertices.size();
                     tVertices.add(insertedPoint);
-                    addPoint(insertedPoint);
-                    tVertexCount++;
+                    result.addPoint(insertedPoint);
                 } else {
                     // we found a vertex that is already on the 2d texture map
                     // so we have it map to an existing item in our array.
@@ -551,15 +533,14 @@ class MeshProjectionTraversal {
                 tVertices.add(p1);
                 tVertices.add(p2);
                 tVertices.add(p3);
-                addPoints(p1, p2, p3);
-                tVertexCount += 3;
+                result.addPoints(p1, p2, p3);
             }
 
             // add the new face to our list of faces
             int newTFaceId = tFaces.size();
             faceMapping.setTFace(currentMeshFaceId, newTFaceId); // update our mapping
             tFaces.add(newFace);
-            tFaceCount++;
+            result.incrementFaceCount();
             intersectionTest = intersectionTest.add(newFace, newTriangle);
 
             // run through the edges that connect to the current one
@@ -597,6 +578,7 @@ class MeshProjectionTraversal {
                 heap.insert(newElemOrder, newElem);
             }
         }
+        return result;
     }
 
     private static double getRanking(QMesh mesh, int currentFace, int otherFace) {
@@ -607,17 +589,5 @@ class MeshProjectionTraversal {
         double vectorLength = Math.sqrt(n1.dot(n1).multiply(n2.dot(n2)).doubleValue());
         // return -cosTheta. This has the desired effect of being the highest value at theta PI and -PI, and lowest value at theta 0
         return -(dotProd.doubleValue() / vectorLength);
-    }
-
-    public int getTFaceCount() {
-        return tFaceCount;
-    }
-
-    public int getTVertexCount() {
-        return tVertexCount;
-    }
-
-    public BoundingBox2D getBounds() {
-        return bounds;
     }
 }

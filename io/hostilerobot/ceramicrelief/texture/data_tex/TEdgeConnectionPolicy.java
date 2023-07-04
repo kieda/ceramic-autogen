@@ -1,4 +1,4 @@
-package io.hostilerobot.ceramicrelief.texture;
+package io.hostilerobot.ceramicrelief.texture.data_tex;
 
 /**
  * represents the relationship between two faces in a texture

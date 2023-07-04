@@ -1,8 +1,8 @@
-package io.hostilerobot.ceramicrelief.texture;
+package io.hostilerobot.ceramicrelief.texture.data_projection;
 
 import java.util.Arrays;
 
-class FaceMappingInfo {
+public class FaceMappingInfo {
     private final int[] tFaces;
     public FaceMappingInfo(int size) {
         tFaces = new int[size];
@@ -16,7 +16,7 @@ class FaceMappingInfo {
         return tFaces[id] >= 0;
     }
 
-    void setTFace(int meshId, int tFaceId) {
+    public void setTFace(int meshId, int tFaceId) {
         tFaces[meshId] = tFaceId;
     }
 }

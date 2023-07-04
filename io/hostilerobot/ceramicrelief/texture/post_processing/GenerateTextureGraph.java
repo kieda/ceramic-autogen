@@ -1,70 +1,26 @@
-package io.hostilerobot.ceramicrelief.texture;
+package io.hostilerobot.ceramicrelief.texture.post_processing;
 
+import io.hostilerobot.ceramicrelief.qmesh.QMesh;
 import io.hostilerobot.ceramicrelief.qmesh.QMeshEdge;
 import io.hostilerobot.ceramicrelief.qmesh.QMeshFace;
-import javafx.geometry.Point2D;
+import io.hostilerobot.ceramicrelief.texture.data_projection.EdgeInfo;
+import io.hostilerobot.ceramicrelief.texture.data_projection.FaceMappingInfo;
+import io.hostilerobot.ceramicrelief.texture.data_projection.ProjectionState;
+import io.hostilerobot.ceramicrelief.texture.projection.MeshProjectionResult;
+import io.hostilerobot.ceramicrelief.texture.data_tex.TEdge;
+import io.hostilerobot.ceramicrelief.texture.data_tex.TEdgeConnectionPolicy;
+import io.hostilerobot.ceramicrelief.texture.data_tex.TFace;
 import org.jgrapht.Graph;
-import org.jgrapht.graph.SimpleGraph;
 
-import java.util.List;
-import java.util.Map;
+class GenerateTextureGraph {
+    private GenerateTextureGraph(){}
 
-/**
- *
- * todo: refactor such that data is its own structure we can pass around, then we have an implementation function
- *       that transforms the data. Currently, doing all the work in the constructor is a dumb design pattern
- */
-public class ComposeProjections {
-    private Graph<TFace, EdgeInfo> textureConnections; // describes the relationship between triangles in our 2d texture
-    private List<Point2D> packing;
-    private ProjectMesh projection;
-
-    public ComposeProjections(
-            List<Point2D> packing,
-            ProjectMesh projection) {
-        assert packing != null && projection != null
-                && packing.size() == projection.getTraversals().size();
-        this.textureConnections = new SimpleGraph<>(null, null, false);
-        this.packing = packing;
-        this.projection = projection;
-
-        translateProjections();
-        createTGraph();
-    }
-    private void translateProjections() {
-        // based on the packing (which defines the new top-left corner for each bounding box in the traversal)
-        // compose into one texture.
-        // things we want to have as a result:
-        // new list of vertices, new list of points
-        // graph (V, E) describing the relation between TFaces
-        int currentVertex = 0;
-        List<MeshProjectionTraversal> traversals = projection.getTraversals();
-        for(int idx = 0; idx < traversals.size(); idx++) {
-            MeshProjectionTraversal traversal = traversals.get(idx);
-            Point2D topLeft = packing.get(idx);
-
-            double translateX = traversal.getBounds().getMinX() - topLeft.getX();
-            double translateY = traversal.getBounds().getMinY() - topLeft.getY();
-
-            int vertexCount = traversal.getTVertexCount();
-            int vertexEnd = currentVertex + vertexCount;
-            List<Point2D> vertices = projection.getTVertices();
-            for(int vert = currentVertex; vert < vertexEnd; vert++) {
-                Point2D vertex = vertices.get(vert);
-                Point2D translated = vertex.add(translateX, translateY);
-                vertices.set(vert, translated);
-            }
-
-            currentVertex = vertexEnd;
-        }
-    }
-
-    // todo move to its own class
-    private void createTGraph() {
-        Map<QMeshEdge, TEdgeConnectionPolicy> connections = projection.getEdgeConnectionPolicy();
+    static void process(ProjectionState projectionState) {
+        QMesh mesh = projectionState.getMesh();
+        MeshProjectionResult projection = projectionState.getProjection();
         FaceMappingInfo faceMapping = projection.getFaceMapping(); // map mesh face to tface.
-        Graph<Integer, QMeshEdge> graph = projection.getBackingMesh().getMeshConnectivity();
-
+        Graph<Integer, QMeshEdge> graph = mesh.getMeshConnectivity();
+        Graph<TFace, EdgeInfo> textureConnections = projection.getTextureConnections();
         // note: suppose we have a face in 3d (A, B, C) that is projected onto 2d (tA, tB, tC)
         // then A -> tA, B -> tB, C -> tC from our traversal, since we ensure the order.
         for(int meshFaceSourceId : graph.iterables().vertices()) {
@@ -72,7 +28,7 @@ public class ComposeProjections {
             TFace tFaceSource = projection.getTFaces().get(tFaceSourceId);
             textureConnections.addVertex(tFaceSource); // ensure this vertex exists
 
-            QMeshFace meshFaceSource = projection.getBackingMesh().getFace(meshFaceSourceId);
+            QMeshFace meshFaceSource = mesh.getFace(meshFaceSourceId);
             for(QMeshEdge meshEdge : graph.iterables().edgesOf(meshFaceSourceId)) {
                 int meshFaceDestId = meshEdge.getOtherFace(meshFaceSourceId);
                 // run through adjacent faces
@@ -84,7 +40,7 @@ public class ComposeProjections {
 
                 textureConnections.addVertex(tFaceDest); // ensure the target vertex exists in the graph
 
-                QMeshFace meshFaceDest = projection.getBackingMesh().getFace(meshFaceDestId);
+                QMeshFace meshFaceDest = mesh.getFace(meshFaceDestId);
 
                 // retrieve the two edges from the texture
                 TEdge sourceEdge = null;
@@ -165,12 +121,11 @@ public class ComposeProjections {
                 assert sourceEdge != null && destEdge != null;
 
                 // get the policy we will use
-                TEdgeConnectionPolicy connectionPolicy = connections.get(meshEdge);
+                TEdgeConnectionPolicy connectionPolicy = projectionState.getConnections().get(meshEdge);
                 // add the edge to the texture graph
                 EdgeInfo edge = new EdgeInfo(sourceEdge, destEdge, connectionPolicy, meshEdge);
                 textureConnections.addEdge(tFaceSource, tFaceDest, edge);
             }
         }
     }
-
 }

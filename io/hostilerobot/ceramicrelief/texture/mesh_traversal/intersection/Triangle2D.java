@@ -1,12 +1,10 @@
-package io.hostilerobot.ceramicrelief.texture;
+package io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection;
 
 import com.github.davidmoten.rtree2.geometry.Geometry;
 import com.github.davidmoten.rtree2.geometry.Rectangle;
 import com.github.davidmoten.rtree2.geometry.internal.RectangleDouble;
 import javafx.geometry.Point2D;
 import org.apache.commons.math.util.FastMath;
-
-import java.util.List;
 
 // triangle implementation for bounding box intersection testing in RTree
 // we only really hold precomputed values here useful for intersection testing.

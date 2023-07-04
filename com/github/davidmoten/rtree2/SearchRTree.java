@@ -2,10 +2,7 @@ package com.github.davidmoten.rtree2;
 
 import com.github.davidmoten.rtree2.geometry.Geometry;
 import com.github.davidmoten.rtree2.geometry.Rectangle;
-import io.hostilerobot.ceramicrelief.texture.Triangle2D;
-
-import java.util.Collections;
-import java.util.function.Predicate;
+import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangle2D;
 
 public final class SearchRTree {
     private SearchRTree(){}
