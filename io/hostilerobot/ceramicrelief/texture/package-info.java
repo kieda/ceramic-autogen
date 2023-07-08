@@ -4,37 +4,22 @@ package io.hostilerobot.ceramicrelief.texture;
 /**
  * this package contains the pipeline necessary for translating a 3d mesh into a 2d mesh used for drawing a texture
  *
- * Overall class: MeshProjectionStrategy. Implementation: SegmentedMeshProjectionStrategy
- *    inputs:  Map<QMesh<Object>.QMeshEdge, TEdgeConnectionPolicy> initialPolicy
- *             QMesh<Object> backingMesh
- *    outputs: List<TFace> tFaces
- *             List<Point2D> tVertices
- *             FaceMappingInfo faceMapping
- *             Graph<TFace, EdgeInfo> textureConnections
+ * simply put,
+ *    Projection = Traversal + Packing + Post Processing
  *
+ * Overall class: MeshProjectionStrategy. Implementation: DFSMeshProjectionStrategy
  *
- * Currently SegmentedMeshProjectionStrategy is the only implementation and follows a pipeline
- * 
+ * DFSMeshProjectionStrategy follows a pipeline outlined by DisjointMeshProjectionStrategy.
+ *
  * parts of the pipeline:
- *   DisjointMeshProjector:
- *      -- traverses the faces of the mesh on all its disjoint components
- *         List<MeshProjectionTraversal> traversals;
- *         List<TFace> tFaces;
- *         List<Point2D> tVertices;
- *         FaceMappingInfo faceMapping;
- *
- *         Map<QMeshEdge, TEdgeConnectionPolicy> edgeConnectionPolicy;
- *
- *   Contiguous Mesh Traversal
- *      -- traverses the faces of the mesh from a starting point, reaching all faces that can be contiguously placed on the same texture
- *      -- generates a bounding box for each disjoint traversal
- *   Box Packing
- *      -- finds a way to pack the result of each bounding box so they are not overlapping
- *   ComposeProjectionUtil: Post processing
- *      TranslateDisjointProjections: Box Translation
- *          -- combines the results of individual mesh traversals and box packing to find the final positions of all vertices
- *      GenerateTextureGraph: 2d graph generation
- *          -- creates a (V, E) graph connecting the triangle texture faces to faces that are adjacent in the mesh
- * 
- *
+ *   PartitionedMeshTraversal:
+ *      -- traverses the mesh over multiple partitions
+ *      MeshPartitionTraversal: (default implementation: DFSMeshPartitionTraversal)
+ *         -- gets individual partition of mesh, traversal and projection for items in the partition
+ *   BoxPacker2D: (default implementation: SquareBoxPacker2D)
+ *      -- finds a packing for multiple bounding boxes such that they do not overlap
+ *   ProjectionCompositionUtil.translateProjections:
+ *      -- combines the result of the partitioned mesh traversal with the result of box packing to get the final positions of all 2d vertices
+ *   ProjectionCompositionUtil.generateTextureGraph:
+ *      -- creates a (V, E) graph connecting the triangle texture faces to mesh-adjacent faces
  */
