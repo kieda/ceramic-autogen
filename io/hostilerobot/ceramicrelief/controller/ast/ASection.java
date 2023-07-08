@@ -3,16 +3,16 @@ package io.hostilerobot.ceramicrelief.controller.ast;
 import java.util.AbstractMap;
 import java.util.Map;
 
-public class ASection<K, V, PK extends ANode<K>, PV extends ANode<V>> implements ANode<Map.Entry<String, AList<Map.Entry<PK, PV>, APair<K, V, PK, PV>>>> {
+public class ASection<K, V> implements ANode<Map.Entry<String, AList<APair<K, V>>>> {
 
-    private final Map.Entry<String, AList<Map.Entry<PK, PV>, APair<K, V, PK, PV>>> section;
+    private final Map.Entry<String, AList<APair<K, V>>> section;
     public ASection(String sectionName,
-                    AList<Map.Entry<PK, PV>, APair<K, V, PK, PV>> sectionItems) {
+                    AList<APair<K, V>> sectionItems) {
         section = new AbstractMap.SimpleImmutableEntry<>(sectionName, sectionItems);
     }
 
     @Override
-    public Map.Entry<String, AList<Map.Entry<PK, PV>, APair<K, V, PK, PV>>> getValue() {
+    public Map.Entry<String, AList<APair<K, V>>> getValue() {
         return section;
     }
 

@@ -7,11 +7,9 @@ import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class AQuotientParser implements AParser<Fraction, AQuotient> {
+public class AQuotientParser implements AParser<Fraction> {
 
     // todo - utilize advancer since a quotient may have whitespace and thus may have a comment
-
-
     @Override
     public AQuotient parse(CharSequence cs) {
         // end of the numerator, exclusive

@@ -6,8 +6,8 @@ import io.hostilerobot.ceramicrelief.util.chars.SmallCharSequence;
 
 import java.util.Arrays;
 
-public interface AParser<T, V extends ANode<T>> {
-    public V parse(CharSequence cs);
+public interface AParser<T> {
+    public ANode<T> parse(CharSequence cs);
     public int match(CharSequence cs); // -1 if no match, otherwise length of sequence match
 
     public static int skipWhiteSpace(CharSequence cs, int pos) {

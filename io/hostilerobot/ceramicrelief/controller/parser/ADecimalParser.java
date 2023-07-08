@@ -6,7 +6,7 @@ import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ADecimalParser implements AParser<Double, ADecimal> {
+public class ADecimalParser implements AParser<Double> {
 
     @Override
     public ADecimal parse(CharSequence cs) {

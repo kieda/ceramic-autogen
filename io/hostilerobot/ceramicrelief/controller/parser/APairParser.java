@@ -6,11 +6,11 @@ import io.hostilerobot.ceramicrelief.controller.ast.APair;
 
 import java.util.Map;
 
-public class APairParser<K, V, PK extends ANode<K>, PV extends ANode<V>>
-    implements AParser<Map.Entry<PK, PV>, APair<K, V, PK, PV>> {
+public class APairParser<K, V>
+    implements AParser<Map.Entry<ANode<K>, ANode<V>>> {
 
     @Override
-    public APair<K, V, PK, PV> parse(CharSequence cs) {
+    public APair<K, V> parse(CharSequence cs) {
         return null;
     }
 

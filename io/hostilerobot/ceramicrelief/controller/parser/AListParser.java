@@ -18,10 +18,10 @@ import java.util.List;
 // list of items are nodes of type Y which result in X
 // Y[] getItems() : <Y extends ANode<X>>[] getValue()
 
-public class AListParser<X, Y extends ANode<X>> implements AParser<Y[], AList<X, Y>>{
-    private final List<AParser<X, Y>> parsers;
+public class AListParser<X> implements AParser<ANode<X>[]>{
+    private final List<AParser<X>> parsers;
 
-    public AListParser(List<AParser<X, Y>> parsers) {
+    public AListParser(List<AParser<X>> parsers) {
         // we can add 'this' with List<AParser<?, ?>>
         this.parsers = parsers;
     }
@@ -168,13 +168,13 @@ public class AListParser<X, Y extends ANode<X>> implements AParser<Y[], AList<X,
         public int getCount() { return count; }
     }
 
-    public static class ListParseState<X, Y extends ANode<X>> extends ListMatchState{
+    public static class ListParseState<X> extends ListMatchState{
         private int itemBegin = -1;
         private int itemEnd = -1;
         private final CharSequence base;
-        private final List<AParser<X, Y>> parsers;
-        private final Y[] items;
-        public ListParseState(CharSequence base, Y[] items, List<AParser<X, Y>> parsers) {
+        private final List<AParser<X>> parsers;
+        private final ANode<X>[] items;
+        public ListParseState(CharSequence base, ANode<X>[] items, List<AParser<X>> parsers) {
             this.base = base;
             this.parsers = parsers;
             this.items = items;
@@ -196,10 +196,10 @@ public class AListParser<X, Y extends ANode<X>> implements AParser<Y[], AList<X,
                     SmallCharSequence.make() : // empty sequence
                     base.subSequence(itemBegin, itemEnd + 1); // end is exclusive, but our indexing is inclusive
             for(int parserIdx = 0; parserIdx < parsers.size(); parserIdx++) {
-                AParser<X, Y> parser = parsers.get(parserIdx);
+                AParser<X> parser = parsers.get(parserIdx);
                 int matchLen = parser.match(itemSequence);
                 if(matchLen >= 0) {
-                    Y node = parser.parse(itemSequence);
+                    ANode<X> node = parser.parse(itemSequence);
                     items[getCount() - 1] = node;
                     break;
                 }
@@ -226,17 +226,17 @@ public class AListParser<X, Y extends ANode<X>> implements AParser<Y[], AList<X,
 
 
     @Override
-    public AList<X, Y> parse(CharSequence cs) {
+    public AList<X> parse(CharSequence cs) {
         ListMatchState matchState = new ListMatchState();
         CharAdvancer.runAdvancer(cs, matchState, LIST_ADVANCER);
         // items for each in the count
-        Y[] items = (Y[]) new Object[matchState.getCount()];
+        ANode<X>[] items = (ANode<X>[]) new ANode[matchState.getCount()];
 
         // traverse again but now get the charsequences for each item
-        ListParseState<X, Y> parseState = new ListParseState<>(cs, items, parsers);
+        ListParseState<X> parseState = new ListParseState<>(cs, items, parsers);
         CharAdvancer.runAdvancer(cs, parseState, PARSE_ADVANCER);
 
-        AList<X, Y> result = new AList<>(items);
+        AList<X> result = new AList<>(items);
         return result;
     }
 }

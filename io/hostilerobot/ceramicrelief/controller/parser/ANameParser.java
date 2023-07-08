@@ -5,7 +5,7 @@ import io.hostilerobot.ceramicrelief.controller.ast.AName;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ANameParser implements AParser<CharSequence, AName>{
+public class ANameParser implements AParser<CharSequence>{
     // don't allow 0-9 in first char, but allow in subsequent chars
     public static Pattern NAME_PAT = Pattern.compile(
             "^(?:[^0-9" + AParser.RESERVED + "])(?:[^" + AParser.RESERVED + "]*)");
