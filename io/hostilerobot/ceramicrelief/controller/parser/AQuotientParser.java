@@ -9,6 +9,9 @@ import java.util.regex.Pattern;
 
 public class AQuotientParser implements AParser<Fraction, AQuotient> {
 
+    // todo - utilize advancer since a quotient may have whitespace and thus may have a comment
+
+
     @Override
     public AQuotient parse(CharSequence cs) {
         // end of the numerator, exclusive

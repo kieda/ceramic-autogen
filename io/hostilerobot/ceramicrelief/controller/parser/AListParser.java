@@ -56,7 +56,7 @@ public class AListParser<X, Y extends ANode<X>> implements AParser<Y[], AList<X,
                         return;
                     default:
                         if(newDepth < 0) {
-                            throw new RuntimeException("mismatched parentheses");
+                            throw new AParserException("mismatched parentheses");
                         }
                 }
             }

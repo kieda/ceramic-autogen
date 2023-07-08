@@ -16,7 +16,7 @@ public class ACommentParser implements AParser<CharSequence, AComment> {
     public AComment parse(CharSequence cs) {
         Matcher matcher = COMMENT_PAT.matcher(cs);
         if(!matcher.lookingAt())
-            throw new IllegalStateException(cs + " is not in comment form");
+            throw new AParserException(cs + " is not in comment form");
         MatchResult result = matcher.toMatchResult();
         return new AComment(cs.subSequence(result.start(1), result.end(1)));
     }
