@@ -85,10 +85,10 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
         };
         private final CharBiPredicate<ListMatchState> match;
         ListCharType(char flag) {
-            this(c -> c == flag);
+            this(CharBiPredicate.from(flag));
         }
         ListCharType(CharPredicate match) {
-            this((c, f) -> match.test(c));
+            this(CharBiPredicate.from(match));
         }
         ListCharType(CharBiPredicate<ListMatchState> match) {
             this.match = match;

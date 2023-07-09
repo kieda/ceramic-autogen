@@ -3,11 +3,10 @@ package io.hostilerobot.ceramicrelief.controller.parser;
 
 import io.hostilerobot.ceramicrelief.controller.ast.ANode;
 import io.hostilerobot.ceramicrelief.controller.ast.APair;
+import io.hostilerobot.ceramicrelief.controller.ast.NodePair;
 
-import java.util.Map;
 
-public class APairParser<K, V>
-    implements AParser<Map.Entry<ANode<K>, ANode<V>>> {
+public class APairParser<K, V> implements AParser<NodePair<K, V>> {
 
     @Override
     public APair<K, V> parse(CharSequence cs) {
