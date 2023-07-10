@@ -10,18 +10,18 @@ import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
 import java.util.EnumMap;
 
 public class ACommentParser implements AParser<CharSequence> {
-    private static final CharAdvancer<CommentAdvancerState> COMMENT_ADVANCER = new CompositeAdvancer<>(CommentCharType.values());
+    private static final CharAdvancer<CommentState> COMMENT_ADVANCER = new CompositeAdvancer<>(CommentCharType.values());
 
     @Override
     public AComment parse(CharSequence cs) {
-        CommentAdvancerState cas = new CommentAdvancerState(true);
+        CommentState cas = new CommentState(true);
         CharAdvancer.runAdvancer(cs, cas, COMMENT_ADVANCER);
         CharSequence comment = cs.subSequence(cas.getCommentStart(), cas.getCommentEnd());
         return new AComment(comment);
     }
     @Override
     public int match(CharSequence cs) {
-        CommentAdvancerState cas = new CommentAdvancerState(true);
+        CommentState cas = new CommentState(true);
         if(CommentCharType.COMMENT_BEGIN.test(cs.charAt(0), cas)) {
             CharAdvancer.runAdvancer(cs, cas, COMMENT_ADVANCER);
             return cas.getCommentEnd();
@@ -29,16 +29,16 @@ public class ACommentParser implements AParser<CharSequence> {
         return -1;
     }
 
-    enum CommentCharType implements CharAdvancer<CommentAdvancerState> {
+    enum CommentCharType implements CharAdvancer<CommentState> {
         COMMENT_BEGIN('#') {
             @Override
-            public void accept(char c, CommentAdvancerState state) {
+            public void accept(char c, CommentState state) {
                 state.startComment();
             }
         },
         NEW_LINE((c, state) -> c == '\r' || c == '\n') {
             @Override
-            public void accept(char c, CommentAdvancerState state) {
+            public void accept(char c, CommentState state) {
                 if(state.isInComment()) {
                     state.endComment();
                     if(state.shouldStopOnCommentEnd())
@@ -49,27 +49,27 @@ public class ACommentParser implements AParser<CharSequence> {
         IN_COMMENT((c, state) -> state.isInComment()),
         OUT_OF_COMMENT((c, state) -> !state.isInComment());
 
-        private CharBiPredicate<CommentAdvancerState> test;
+        private CharBiPredicate<CommentState> test;
         CommentCharType(char rep) { this(CharBiPredicate.from(rep)); }
-        CommentCharType(CharBiPredicate<CommentAdvancerState> test) {
+        CommentCharType(CharBiPredicate<CommentState> test) {
             this.test = test;
         }
 
         @Override
-        public void accept(char c, CommentAdvancerState state) {}
+        public void accept(char c, CommentState state) {}
 
         @Override
-        public boolean test(char c, CommentAdvancerState state) {
+        public boolean test(char c, CommentState state) {
             return test.test(c, state);
         }
     }
 
-    public static <S extends CommentAdvancerState> CharAdvancer<S> buildCommentAdvancer(
+    public static <S extends CommentState> CharAdvancer<S> buildCommentAdvancer(
             CharAdvancer<S> whileOutOfComment) {
         return buildCommentAdvancer(whileOutOfComment, null);
     }
 
-    public static <S extends CommentAdvancerState> CharAdvancer<S> buildCommentAdvancer(
+    public static <S extends CommentState> CharAdvancer<S> buildCommentAdvancer(
             CharAdvancer<S> whileOutOfComment,
             CharAdvancer<S> whileInComment) {
         EnumMap<CommentCharType, CharAdvancer<S>> map = new EnumMap<>(CommentCharType.class);
@@ -84,7 +84,7 @@ public class ACommentParser implements AParser<CharSequence> {
         return new EnumAdvancer<>(CommentCharType.values(), map);
     }
 
-    static class CommentAdvancerState extends AdvancerState {
+    static class CommentState extends AdvancerState {
         private boolean inComment = false;
         private int commentStart = -1;
         private int commentEnd = -1;
@@ -92,12 +92,12 @@ public class ACommentParser implements AParser<CharSequence> {
         // private method to allow us to stop parsing when the comment ends
         // only used internally
         private final boolean stopOnCommentEnd;
-        private CommentAdvancerState(boolean stopOnCommentEnd) {
+        private CommentState(boolean stopOnCommentEnd) {
             this.stopOnCommentEnd = stopOnCommentEnd;
         }
         // by default we continue parsing through the whole string
         // to allow other classes to compose with this one
-        public CommentAdvancerState() {
+        public CommentState() {
             this.stopOnCommentEnd = false;
         }
 

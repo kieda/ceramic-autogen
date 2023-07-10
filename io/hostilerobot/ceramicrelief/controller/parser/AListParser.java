@@ -9,7 +9,6 @@ import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
 import io.hostilerobot.ceramicrelief.util.chars.CharPredicate;
 import io.hostilerobot.ceramicrelief.util.chars.SmallCharSequence;
 
-import java.text.ParseException;
 import java.util.EnumMap;
 import java.util.List;
 
@@ -137,7 +136,7 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
     }
 
 
-    private static class ListMatchState extends ACommentParser.CommentAdvancerState{
+    private static class ListMatchState extends ACommentParser.CommentState {
         private int depth;
         private int count;
 

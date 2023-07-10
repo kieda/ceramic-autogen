@@ -52,7 +52,7 @@ public class ProjectionMain extends Application {
         Scene scene = new Scene(root, 500, 300, true);
         scene.setCamera(camera);
         primaryStage.setScene(scene);
-        primaryStage.setTitle("3D Example");
+        primaryStage.setTitle("test lol");
 
         primaryStage.show();
     }

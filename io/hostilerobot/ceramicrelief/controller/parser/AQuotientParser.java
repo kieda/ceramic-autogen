@@ -1,27 +1,22 @@
 package io.hostilerobot.ceramicrelief.controller.parser;
 
 import io.hostilerobot.ceramicrelief.controller.ast.AQuotient;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.AdvancerState;
+import io.hostilerobot.ceramicrelief.controller.parser.advancer.AdvancerDAG;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.CharAdvancer;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.CompositeAdvancer;
 import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
-import io.hostilerobot.ceramicrelief.util.chars.CharPredicate;
 import org.apache.commons.math.fraction.Fraction;
-
-import java.text.ParseException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class AQuotientParser implements AParser<Fraction> {
 
     /**
      * state transitions for quotient parsing
      */
-    private enum QuotientPart{
+    private enum QuotientDAG implements AdvancerDAG<QuotientState, QuotientDAG> {
         END() {
             @Override
             public void onTransition(QuotientState state) {
-                if(state.getCurrentPart() == QuotientPart.DENOMINATOR) {
+                if(state.getCurrentPart() == QuotientDAG.DENOMINATOR) {
                     // if we transitioned to END from INTEGER we don't want to do anything as there is no denominator component
                     state.denominatorComponent = state.parseCurrentInt();
                     // don't reset the current index
@@ -61,26 +56,22 @@ public class AQuotientParser implements AParser<Fraction> {
         //    3 ..        ± ..
         START(FIRST_ITEM, FIRST_SIGN)
         ;
-        private final QuotientPart[] transitions;
-        QuotientPart(QuotientPart... transitions) {
+        private final QuotientDAG[] transitions;
+        QuotientDAG(QuotientDAG... transitions) {
             this.transitions = transitions;
         }
-        public QuotientPart[] getTransitions() {
+        public QuotientDAG[] getTransitions() {
             return transitions;
         }
-        public static QuotientPart getStartState() {
+        public static QuotientDAG getStartState() {
             return START;
         }
-        public static QuotientPart getEndState() {
+        public static QuotientDAG getEndState() {
             return END;
         }
 
-        public void onTransition(QuotientState state) {
-            // default - do nothing. But this can be overridden
-        }
-
-        public boolean isValidTransition(QuotientPart next) {
-            for(QuotientPart nPossible : this.getTransitions()) {
+        public boolean isValidTransition(QuotientDAG next) {
+            for(QuotientDAG nPossible : this.getTransitions()) {
                 if(nPossible == next)
                     return true;
             }
@@ -88,9 +79,9 @@ public class AQuotientParser implements AParser<Fraction> {
         }
     }
 
-    private static class QuotientState extends ACommentParser.CommentAdvancerState {
+    private static class QuotientState extends ACommentParser.CommentState {
         // current part of the quotient
-        private QuotientPart currentPart = QuotientPart.getStartState();
+        private QuotientDAG currentPart = QuotientDAG.getStartState();
         private boolean sign = false; // false for +, true for -
         private int startIdx = -1;
         private int endIdx = -1;
@@ -104,7 +95,7 @@ public class AQuotientParser implements AParser<Fraction> {
             this.baseSequence = baseSequence;
         }
 
-        public QuotientPart getCurrentPart() {
+        public QuotientDAG getCurrentPart() {
             return currentPart;
         }
 
@@ -134,7 +125,7 @@ public class AQuotientParser implements AParser<Fraction> {
                 return result;
         }
 
-        private void transition(QuotientPart next) {
+        private void transition(QuotientDAG next) {
             if(!currentPart.isValidTransition(next))
                 throw new AParserException();
             next.onTransition(this);
@@ -168,14 +159,14 @@ public class AQuotientParser implements AParser<Fraction> {
                         //      ^
                         // "±123 4/.." FIRST_ITEM => INTEGER => SECOND_SIGN
                         //       ^
-                        state.transition(QuotientPart.INTEGER);
+                        state.transition(QuotientDAG.INTEGER);
                         state.sign = false;
-                        state.transition(QuotientPart.SECOND_SIGN);
+                        state.transition(QuotientDAG.SECOND_SIGN);
                         break;
                     case NUMERATOR:
                         // "... 1/ 3" NUMERATOR => DENOMINATOR
                         //         ^
-                        state.transition(QuotientPart.DENOMINATOR);
+                        state.transition(QuotientDAG.DENOMINATOR);
                 }
 
                 state.encounterValueChar(c);
@@ -218,16 +209,16 @@ public class AQuotientParser implements AParser<Fraction> {
                         if(!state.hasValue()) {
                             // set the sign and transition to first sign
                             state.sign = sign;
-                            state.transition(QuotientPart.FIRST_SIGN);
+                            state.transition(QuotientDAG.FIRST_SIGN);
                             break;
                         }
                     case FIRST_SIGN:
                         // first item is now seen
-                        state.transition(QuotientPart.FIRST_ITEM);
+                        state.transition(QuotientDAG.FIRST_ITEM);
                     case FIRST_ITEM:
-                        state.transition(QuotientPart.INTEGER);
+                        state.transition(QuotientDAG.INTEGER);
                         state.sign = sign;
-                        state.transition(QuotientPart.SECOND_SIGN);
+                        state.transition(QuotientDAG.SECOND_SIGN);
                 }
             }
         },
@@ -249,10 +240,10 @@ public class AQuotientParser implements AParser<Fraction> {
                 switch(state.getCurrentPart()) {
                     case START:
                     case FIRST_SIGN:
-                        state.transition(QuotientPart.FIRST_ITEM);
+                        state.transition(QuotientDAG.FIRST_ITEM);
                     case SECOND_SIGN:
                     case FIRST_ITEM:
-                        state.transition(QuotientPart.NUMERATOR);
+                        state.transition(QuotientDAG.NUMERATOR);
                         break;
                     default:
                         throw new AParserException();
@@ -268,7 +259,7 @@ public class AQuotientParser implements AParser<Fraction> {
                         // "123 / 457 "
                         //           ^
                         // transition to the end and stop
-                        state.transition(QuotientPart.END);
+                        state.transition(QuotientDAG.END);
                         state.stop();
                         break;
                     case START:
@@ -279,7 +270,7 @@ public class AQuotientParser implements AParser<Fraction> {
                             //     ^
                             // "123 "
                             //     ^
-                            state.transition(QuotientPart.FIRST_ITEM);
+                            state.transition(QuotientDAG.FIRST_ITEM);
                         }
                 }
             }
@@ -298,15 +289,15 @@ public class AQuotientParser implements AParser<Fraction> {
                         //     ^
                         // "±123)"
                         //      ^
-                        state.transition(QuotientPart.FIRST_ITEM);
+                        state.transition(QuotientDAG.FIRST_ITEM);
                     case FIRST_ITEM:
                         // FIRST_ITEM => INTEGER => END
                         // "123 )"
                         //     ^
-                        state.transition(QuotientPart.INTEGER);
+                        state.transition(QuotientDAG.INTEGER);
                     case DENOMINATOR:
                         // transition to the end and stop
-                        state.transition(QuotientPart.END);
+                        state.transition(QuotientDAG.END);
                         state.stop();
                         break;
                     default:
@@ -346,7 +337,7 @@ public class AQuotientParser implements AParser<Fraction> {
                 if(state.getPos() == cs.length()) {
                     // we ran through the entire sequence, which ends with DENOMINATOR or INTEGER
                     // transition to the end.
-                    state.transition(QuotientPart.END);
+                    state.transition(QuotientDAG.END);
                     state.stop();
                 }
         }
@@ -361,7 +352,7 @@ public class AQuotientParser implements AParser<Fraction> {
     @Override
     public int match(CharSequence cs) {
         QuotientState state = advance(cs);
-        if(state.getCurrentPart() == QuotientPart.getEndState()) {
+        if(state.getCurrentPart() == QuotientDAG.getEndState()) {
             // we use endIdx to handle cases like the following:
             // "123  "
             //      ^ end pos
