@@ -135,14 +135,37 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
         PARSE_ADVANCER = new EnumAdvancer<>(ListCharType.values(), map);
     }
 
+    public static <S extends ListMatchState> CharAdvancer<S> buildListMatcher(
+            CharAdvancer<S> onListStart,
+            CharAdvancer<S> onListEnd,
+            CharAdvancer<S> whileOutOfList,
+            CharAdvancer<S> whileInList) {
+        EnumMap<ListCharType, CharAdvancer<S>> map = new EnumMap<>(ListCharType.class);
+//        map.put(ListCharType.OTHER, whileOutOfComment);
+//        map.put(NEW_LINE, whileOutOfComment);
+//        // consider new line to be out of the comment
+//        // so we don't consume them and they are treated as whitespace; can separate values
+//
+//        if(whileInList != null)
+//            map.put(ACommentParser.CommentCharType.IN_COMMENT, whileInComment);
 
-    private static class ListMatchState extends ACommentParser.CommentState {
+        return new EnumAdvancer<>(ListCharType.values(), map);
+    }
+
+
+    static class ListMatchState extends ACommentParser.CommentState {
+        private final boolean stopOnListEnd;
         private int depth;
         private int count;
 
-        public ListMatchState() {
+        // internal constructor
+        private ListMatchState(boolean stopOnListEnd) {
+            this.stopOnListEnd = stopOnListEnd;
             depth = 0;
             count = 0;
+        }
+        public ListMatchState() {
+            this(false);
         }
 
         /* handles */
@@ -155,7 +178,13 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
         }
         @Override
         protected void stop() {
-            super.stop();
+            if(stopOnListEnd)
+                super.stop();
+            else {
+                // otherwise reset the state
+                depth = 0;
+                count = 0;
+            }
         }
         @Override
         protected void increasePos() {
@@ -167,13 +196,14 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
         public int getCount() { return count; }
     }
 
-    public static class ListParseState<X> extends ListMatchState{
+    private static class ListParseState<X> extends ListMatchState{
         private int itemBegin = -1;
         private int itemEnd = -1;
         private final CharSequence base;
         private final List<AParser<X>> parsers;
         private final ANode<X>[] items;
-        public ListParseState(CharSequence base, ANode<X>[] items, List<AParser<X>> parsers) {
+        private ListParseState(CharSequence base, ANode<X>[] items, List<AParser<X>> parsers) {
+            super(true); // only used internally. Thus we can just stop as usual
             this.base = base;
             this.parsers = parsers;
             this.items = items;
@@ -210,7 +240,7 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
     @Override
     public int match(CharSequence cs) {
         // first char must be '('
-        ListMatchState state = new ListMatchState();
+        ListMatchState state = new ListMatchState(true);
         if(cs.isEmpty() || !ListCharType.OPEN_LIST.test(cs.charAt(0), state))
             return -1;
 
@@ -226,7 +256,7 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
 
     @Override
     public AList<X> parse(CharSequence cs) {
-        ListMatchState matchState = new ListMatchState();
+        ListMatchState matchState = new ListMatchState(true);
         CharAdvancer.runAdvancer(cs, matchState, LIST_ADVANCER);
         // items for each in the count
         ANode<X>[] items = (ANode<X>[]) new ANode[matchState.getCount()];

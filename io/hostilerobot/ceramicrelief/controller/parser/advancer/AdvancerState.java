@@ -11,20 +11,21 @@ public class AdvancerState {
         hasValue = false;
     }
 
+    /* handles */
+    protected void clearValue() { hasValue = false; }
+    protected void increasePos() { pos++; }
+
     /* events */
     protected void encounterValueChar(char c) {
         // used to distinguish empty list () vs single list (abc)
         // vs list like the following (,asdf) (two elements)
         if (!hasValue) {
             hasValue = true;
-            onValueFound();
         }
     }
-    protected void onValueFound() {}
-
 
     protected void stop() { stop = true; }
-    protected void increasePos() { pos++; }
+
 
     /* accessors */
     public boolean isStopped() { return stop; }

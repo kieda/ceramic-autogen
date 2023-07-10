@@ -142,10 +142,16 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-    // todo - combine with listparser
-    //   so we can have pairs in lists
     // todo - combine listparser with pair parser
-    //   so we can have lists in pairs
+    //   so we can have lists in pairs (a = b, c = d) = (e = f, g = h)
+    //   such that we split into K:"(a = b, c = d)", V:"(e = f, g = h)"
+    //   rather than K:"(a"  V:"b, c = d) = (e = f, g = h)"
+    // note that we don't need to do the same thing for pairs in lists, since lists are always delimited with ( and )
+
+    // boolean in_list
+    // if not in_list then PairCharType
+    // if start_list or end_list then OTHER
+    // otherwise do nothing
     private enum PairCharType implements CharAdvancer<PairMatchState> {
         OPEN_PAIR('{') {
             @Override

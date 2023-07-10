@@ -3,6 +3,11 @@ package io.hostilerobot.ceramicrelief.controller.parser.advancer;
 import java.util.EnumMap;
 
 /**
+ * todo - it's possible to get rid of inheiritance muck by having a ChainedAdvancerState<P extends AdvancerState, Q extends AdvancerState>
+ *        where DelegateAdvancerState has fields passed in through constructor P pState, Q qState.
+ *        then, we use the Enum's test/accept on pState, and the map's test/accept on qState
+ *        thus we will be favoring composition over inheiritance and that's pretty neat
+ *        WE SHOULD MAKE THE CHANGE NOW - states are kinda stepping on each other's toes
  * @param <T> the state that the enum uses
  * @param <Q> the enum type
  * @param <Base> the state that we'll be using, subclass of T
