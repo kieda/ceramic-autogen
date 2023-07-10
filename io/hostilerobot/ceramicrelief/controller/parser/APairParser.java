@@ -1,10 +1,12 @@
 package io.hostilerobot.ceramicrelief.controller.parser;
 
 
+import com.sun.net.httpserver.Filter;
 import io.hostilerobot.ceramicrelief.controller.ast.ANode;
 import io.hostilerobot.ceramicrelief.controller.ast.APair;
 import io.hostilerobot.ceramicrelief.controller.ast.NodePair;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.AdvancerDAG;
+import io.hostilerobot.ceramicrelief.controller.parser.advancer.ChainedAdvancerState;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.CharAdvancer;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.CompositeAdvancer;
 import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
@@ -142,10 +144,6 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-    // todo - combine listparser with pair parser
-    //   so we can have lists in pairs (a = b, c = d) = (e = f, g = h)
-    //   such that we split into K:"(a = b, c = d)", V:"(e = f, g = h)"
-    //   rather than K:"(a"  V:"b, c = d) = (e = f, g = h)"
     // note that we don't need to do the same thing for pairs in lists, since lists are always delimited with ( and )
 
     // boolean in_list
@@ -423,13 +421,20 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         this.valParsers = valParsers;
     }
 
-    private static final CharAdvancer<PairMatchState> PAIR_ADVANCER =
-            ACommentParser.buildCommentAdvancer(
-                    new CompositeAdvancer<>(PairCharType.values()));
 
+    // combined with commentAdvancer and listMatcher
+    //   so we can have lists in pairs (a = b, c = d) = (e = f, g = h)
+    //   such that we split into K:"(a = b, c = d)", V:"(e = f, g = h)"
+    //   rather than K:"(a"  V:"b, c = d) = (e = f, g = h)"
+    //   this also permits comments anywhere in this string
+    private static final CharAdvancer<ChainedAdvancerState<ACommentParser.CommentState, ChainedAdvancerState<AListParser.ListMatchState, PairMatchState>>> PAIR_MATCH_ADVANCER =
+            ACommentParser.buildCommentAdvancer(
+                    AListParser.buildListMatcher(new CompositeAdvancer<>(PairCharType.values())));
 
     private static <V> PairMatchState<V> advance(PairMatchState<V> state, CharSequence cs) {
-        CharAdvancer.runAdvancer(cs, state, PAIR_ADVANCER);
+        CharAdvancer.runAdvancer(cs,
+                 ChainedAdvancerState.chain(new ACommentParser.CommentState(), new AListParser.ListMatchState(), state),
+                PAIR_MATCH_ADVANCER);
         if(state.getDAG() == PairDAG.SEP) {
             // may occur with the following:
             // "K '='  "

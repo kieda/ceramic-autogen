@@ -2,6 +2,7 @@ package io.hostilerobot.ceramicrelief.controller.parser;
 
 import io.hostilerobot.ceramicrelief.controller.ast.AQuotient;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.AdvancerDAG;
+import io.hostilerobot.ceramicrelief.controller.parser.advancer.ChainedAdvancerState;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.CharAdvancer;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.CompositeAdvancer;
 import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
@@ -16,7 +17,7 @@ public class AQuotientParser implements AParser<Fraction> {
         END() {
             @Override
             public void onTransition(QuotientState state) {
-                if(state.getCurrentPart() == QuotientDAG.DENOMINATOR) {
+                if(state.getDAG() == QuotientDAG.DENOMINATOR) {
                     // if we transitioned to END from INTEGER we don't want to do anything as there is no denominator component
                     state.denominatorComponent = state.parseCurrentInt();
                     // don't reset the current index
@@ -95,7 +96,7 @@ public class AQuotientParser implements AParser<Fraction> {
             this.baseSequence = baseSequence;
         }
 
-        public QuotientDAG getCurrentPart() {
+        public QuotientDAG getDAG() {
             return currentPart;
         }
 
@@ -153,7 +154,7 @@ public class AQuotientParser implements AParser<Fraction> {
         DECIMAL(CharBiPredicate.from(c -> c >= '0' && c <= '9')) {
             @Override
             public void accept(char c, QuotientState state) {
-                switch(state.getCurrentPart()) {
+                switch(state.getDAG()) {
                     case FIRST_ITEM:
                         // "123 4/.." FIRST_ITEM => INTEGER => SECOND_SIGN
                         //      ^
@@ -182,7 +183,7 @@ public class AQuotientParser implements AParser<Fraction> {
             if(c != '+' && c != '-')
                 return false;
 
-            switch(t.getCurrentPart()) {
+            switch(t.getDAG()) {
                 case START:
                     // ±123 => FIRST_SIGN
                     // ^
@@ -204,7 +205,7 @@ public class AQuotientParser implements AParser<Fraction> {
             @Override
             public void accept(char c, QuotientState state) {
                 boolean sign = c == '-'; // set the sign
-                switch(state.getCurrentPart()) {
+                switch(state.getDAG()) {
                     case START:
                         if(!state.hasValue()) {
                             // set the sign and transition to first sign
@@ -237,7 +238,7 @@ public class AQuotientParser implements AParser<Fraction> {
                 //            ^
                 // "123 456 / 789 -- SECOND_SIGN => NUMERATOR
                 //          ^
-                switch(state.getCurrentPart()) {
+                switch(state.getDAG()) {
                     case START:
                     case FIRST_SIGN:
                         state.transition(QuotientDAG.FIRST_ITEM);
@@ -253,7 +254,7 @@ public class AQuotientParser implements AParser<Fraction> {
         WHITESPACE(CharBiPredicate.from(Character::isWhitespace)) {
             @Override
             public void accept(char c, QuotientState state) {
-                switch(state.getCurrentPart()) {
+                switch(state.getDAG()) {
                     case DENOMINATOR:
                         // DENOMINATOR => END
                         // "123 / 457 "
@@ -281,7 +282,7 @@ public class AQuotientParser implements AParser<Fraction> {
                 if(!state.hasValue())
                     // cannot end with no value
                     throw new AParserException();
-                switch(state.getCurrentPart()) {
+                switch(state.getDAG()) {
                     case START:
                     case FIRST_SIGN:
                         // {START|FIRST_SIGN} => FIRST_ITEM => INTEGER => END.
@@ -323,15 +324,15 @@ public class AQuotientParser implements AParser<Fraction> {
     }
 
 
-    private static final CharAdvancer<QuotientState> QUOTIENT_ADVANCER =
+    private static final CharAdvancer<ChainedAdvancerState<ACommentParser.CommentState, QuotientState>> QUOTIENT_ADVANCER =
             ACommentParser.buildCommentAdvancer(
                     new CompositeAdvancer<>(QuotientCharType.values()));
     private static QuotientState advance(CharSequence cs) {
         // todo - just add a default method to advancer. Then we can override it for functionality
         //        like below
         QuotientState state = new QuotientState(cs);
-        CharAdvancer.runAdvancer(cs, state, QUOTIENT_ADVANCER);
-        switch(state.getCurrentPart()) {
+        CharAdvancer.runAdvancer(cs, new ChainedAdvancerState<>(new ACommentParser.CommentState(), state), QUOTIENT_ADVANCER);
+        switch(state.getDAG()) {
             case DENOMINATOR:
             case INTEGER:
                 if(state.getPos() == cs.length()) {
@@ -352,7 +353,7 @@ public class AQuotientParser implements AParser<Fraction> {
     @Override
     public int match(CharSequence cs) {
         QuotientState state = advance(cs);
-        if(state.getCurrentPart() == QuotientDAG.getEndState()) {
+        if(state.getDAG() == QuotientDAG.getEndState()) {
             // we use endIdx to handle cases like the following:
             // "123  "
             //      ^ end pos

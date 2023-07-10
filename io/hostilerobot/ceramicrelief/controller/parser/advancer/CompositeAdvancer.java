@@ -1,10 +1,5 @@
 package io.hostilerobot.ceramicrelief.controller.parser.advancer;
 
-import io.hostilerobot.ceramicrelief.util.chars.CharBiConsumer;
-
-import java.util.EnumMap;
-import java.util.List;
-
 public class CompositeAdvancer<T extends AdvancerState> implements CharAdvancer<T> {
     private CharAdvancer<T>[] advancers;
     public CompositeAdvancer(CharAdvancer<T>[] advancers) {

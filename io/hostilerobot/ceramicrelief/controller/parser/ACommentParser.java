@@ -1,10 +1,7 @@
 package io.hostilerobot.ceramicrelief.controller.parser;
 
 import io.hostilerobot.ceramicrelief.controller.ast.AComment;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.AdvancerState;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.CharAdvancer;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.CompositeAdvancer;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.EnumAdvancer;
+import io.hostilerobot.ceramicrelief.controller.parser.advancer.*;
 import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
 
 import java.util.EnumMap;
@@ -64,12 +61,12 @@ public class ACommentParser implements AParser<CharSequence> {
         }
     }
 
-    public static <S extends CommentState> CharAdvancer<S> buildCommentAdvancer(
+    public static <S extends AdvancerState> CharAdvancer<ChainedAdvancerState<CommentState, S>> buildCommentAdvancer(
             CharAdvancer<S> whileOutOfComment) {
         return buildCommentAdvancer(whileOutOfComment, null);
     }
 
-    public static <S extends CommentState> CharAdvancer<S> buildCommentAdvancer(
+    public static <S extends AdvancerState> CharAdvancer<ChainedAdvancerState<CommentState, S>> buildCommentAdvancer(
             CharAdvancer<S> whileOutOfComment,
             CharAdvancer<S> whileInComment) {
         EnumMap<CommentCharType, CharAdvancer<S>> map = new EnumMap<>(CommentCharType.class);
@@ -81,7 +78,7 @@ public class ACommentParser implements AParser<CharSequence> {
         if(whileInComment != null)
             map.put(CommentCharType.IN_COMMENT, whileInComment);
 
-        return new EnumAdvancer<>(CommentCharType.values(), map);
+        return new ChainedEnumAdvancer<>(CommentCharType.values(), map);
     }
 
     static class CommentState extends AdvancerState {
