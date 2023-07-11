@@ -66,8 +66,6 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-
-
     /*  K '=' V
      * ^^  ^  ^ ^
      * ||  |  | END
@@ -435,7 +433,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         CharAdvancer.runAdvancer(cs,
                  ChainedAdvancerState.chain(new ACommentParser.CommentState(), new AListParser.ListMatchState(), state),
                 PAIR_MATCH_ADVANCER);
-        if(state.getDAG() == PairDAG.SEP) {
+        if(!state.isStopped() && state.getDAG() == PairDAG.SEP) {
             // may occur with the following:
             // "K '='  "
             //        ^

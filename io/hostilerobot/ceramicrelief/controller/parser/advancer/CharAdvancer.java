@@ -9,8 +9,8 @@ public interface CharAdvancer<T extends AdvancerState> extends CharBiPredicate<T
     boolean test(char c, T state);
 
     public static <S extends AdvancerState> void runAdvancer(CharSequence cs, S state, CharAdvancer<S> advancer) {
-        for(; state.getPos() < cs.length() && !state.isStopped(); state.increasePos()) {
-            char c = cs.charAt(state.getPos());
+        for(int pos; (pos = state.getPos()) < cs.length() && !state.isStopped(); state.increasePos()) {
+            char c = cs.charAt(pos);
             if(advancer.test(c, state)) {
                 advancer.accept(c, state);
             }

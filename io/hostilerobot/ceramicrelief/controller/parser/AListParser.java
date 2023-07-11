@@ -9,6 +9,7 @@ import io.hostilerobot.ceramicrelief.util.chars.SmallCharSequence;
 
 import java.util.EnumMap;
 import java.util.List;
+import java.util.function.Predicate;
 
 // AList:
 // X is resulting value of Y
@@ -24,6 +25,12 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
     }
 
     private enum ListCharType implements CharAdvancer<ListMatchState>{
+        START_LIST('(', s -> s.getDepth() == 0) {
+            @Override
+            public void accept(char c, ListMatchState state) {
+                state.pushDepth();
+            }
+        },
         OPEN_LIST('(') {
             @Override
             public void accept(char c, ListMatchState state) {
@@ -36,18 +43,21 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
                 state.pushDepth();
             }
         },
+        END_LIST(')', s -> s.getDepth() == 1) {
+            @Override
+            public void accept(char c, ListMatchState state) {
+                // increase count if we have a value or encountered ','
+                // covers cases (), (asdf), and (,) to have 0, 1, and 2 values respectively
+                if(state.getCount() > 0 || state.hasValue())
+                    state.increaseCount();
+                state.stop();
+            }
+        },
         CLOSE_LIST(')') {
             @Override
             public void accept(char c, ListMatchState state) {
                 int newDepth = state.popDepth();
                 switch(newDepth) {
-                    case 0:
-                        // increase count if we have a value or encountered ','
-                        // covers cases (), (asdf), and (,) to have 0, 1, and 2 values respectively
-                        if(state.getCount() > 0 || state.hasValue())
-                            state.increaseCount();
-                        state.stop();
-                        return;
                     case 1:
                         state.encounterValueChar(c);
                         return;
@@ -72,13 +82,17 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
             @Override
             public void accept(char c, ListMatchState state) {}
         },
-        OTHER(c -> true) {
+        IN_LIST((c, s) -> s.getDepth() > 0) {
             @Override
             public void accept(char c, ListMatchState state) {
                 if(state.getDepth() == 1) {
                     state.encounterValueChar(c);
                 }
             }
+        },
+        OUT_OF_LIST((c, s) -> s.getDepth() == 0) {
+            @Override
+            public void accept(char c, ListMatchState state) {}
         };
         private final CharBiPredicate<ListMatchState> match;
         ListCharType(char flag) {
@@ -86,6 +100,9 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
         }
         ListCharType(CharPredicate match) {
             this(CharBiPredicate.from(match));
+        }
+        ListCharType(char flag, Predicate<ListMatchState> match) {
+            this(CharBiPredicate.from(flag, match));
         }
         ListCharType(CharBiPredicate<ListMatchState> match) {
             this.match = match;
@@ -139,29 +156,22 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
             CharAdvancer<S> onListEnd,
             CharAdvancer<S> whileOutOfList,
             CharAdvancer<S> whileInList) {
-        return null;
+        EnumMap<ListCharType, CharAdvancer<S>> map = new EnumMap<>(ListCharType.class);
+        map.put(ListCharType.START_LIST, onListStart);
+        map.put(ListCharType.END_LIST, onListEnd);
+        map.put(ListCharType.OUT_OF_LIST, whileOutOfList);
+        if(whileInList != null) {
+            map.put(ListCharType.OPEN_LIST, whileInList);
+            map.put(ListCharType.CLOSE_LIST, whileInList);
+            map.put(ListCharType.ITEM_SEP, whileInList);
+            map.put(ListCharType.IN_LIST, whileInList);
+        }
+
+        return new ChainedEnumAdvancer<>(ListCharType.values(), map);
     }
 
-//    public static <S extends ListMatchState> CharAdvancer<S> buildListMatcher(
-//            CharAdvancer<S> onListStart,
-//            CharAdvancer<S> onListEnd,
-//            CharAdvancer<S> whileOutOfList,
-//            CharAdvancer<S> whileInList) {
-//        EnumMap<ListCharType, CharAdvancer<S>> map = new EnumMap<>(ListCharType.class);
-////        map.put(ListCharType.OTHER, whileOutOfComment);
-////        map.put(NEW_LINE, whileOutOfComment);
-////        // consider new line to be out of the comment
-////        // so we don't consume them and they are treated as whitespace; can separate values
-////
-////        if(whileInList != null)
-////            map.put(ACommentParser.CommentCharType.IN_COMMENT, whileInComment);
-//
-////        return new ChainedEnumAdvancer<>(ListCharType.values(), map);
-//        return null;
-//    }
 
-
-    static class ListMatchState extends ACommentParser.CommentState {
+    static class ListMatchState extends AdvancerState {
         private final boolean stopOnListEnd;
         private int depth;
         private int count;
@@ -192,8 +202,10 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
                 // otherwise reset the state
                 depth = 0;
                 count = 0;
+                super.clearValue();
             }
         }
+
         @Override
         protected void increasePos() {
             super.increasePos();
@@ -251,7 +263,7 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
         ListMatchState state = new ListMatchState(true);
         if(cs.isEmpty() || !ListCharType.OPEN_LIST.test(cs.charAt(0), state))
             return -1;
-        CharAdvancer.runAdvancer(cs, new ChainedAdvancerState<>(
+        CharAdvancer.runAdvancer(cs, ChainedAdvancerState.chain(
                 new ACommentParser.CommentState(),
                 state
         ), LIST_ADVANCER);
@@ -267,14 +279,14 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
     @Override
     public AList<X> parse(CharSequence cs) {
         ListMatchState matchState = new ListMatchState(true);
-        CharAdvancer.runAdvancer(cs, new ChainedAdvancerState<>(new ACommentParser.CommentState(), matchState),
+        CharAdvancer.runAdvancer(cs, ChainedAdvancerState.chain(new ACommentParser.CommentState(), matchState),
                 LIST_ADVANCER);
         // items for each in the count
         ANode<X>[] items = (ANode<X>[]) new ANode[matchState.getCount()];
 
         // traverse again but now get the charsequences for each item
         ListParseState<X> parseState = new ListParseState<>(cs, items, parsers);
-        CharAdvancer.runAdvancer(cs, new ChainedAdvancerState<>(new ACommentParser.CommentState(), parseState),
+        CharAdvancer.runAdvancer(cs, ChainedAdvancerState.chain(new ACommentParser.CommentState(), parseState),
                 PARSE_ADVANCER);
 
         AList<X> result = new AList<>(items);

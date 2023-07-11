@@ -3,6 +3,8 @@ package io.hostilerobot.ceramicrelief.controller.parser.advancer;
 // helper class to keep track of the state and possible transitions while advancing
 // best when extending an enum, see: AQuotientParser
 
+// todo - have an explicit AdvancerState that implements transitional methods.
+//   now that we have ChainedAdvancerState we are more free to compose with multiple DAGs.
 // we shy away from having an explicit AdvancerState that implements transitional methods,
 // as an Advancer may have multiple DAGs from its inheiritance chain. Thus it's handled manually
 //     unless we want to make some sort of DAG map

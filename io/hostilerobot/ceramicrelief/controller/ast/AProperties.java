@@ -1,14 +1,24 @@
 package io.hostilerobot.ceramicrelief.controller.ast;
 
-public class AProperties<K, V> implements ANode<AList<ASection<K, V>>> {
-    private final AList<ASection<K, V>> propertySections;
-    public AProperties(AList<ASection<K, V>> propertySections) {
-        this.propertySections = propertySections;
+import java.util.ArrayList;
+import java.util.List;
+
+public class AProperties<V> implements ANode<List<ASection<V>>> {
+    private final List<ASection<V>> propertySections;
+    public AProperties() {
+        this.propertySections = new ArrayList<>();
     }
 
+    public void add(ASection<V> node) {
+        propertySections.add(node);
+    }
+
+    public ASection<V> get(int index) {
+        return propertySections.get(index);
+    }
 
     @Override
-    public AList<ASection<K, V>> getValue() {
+    public List<ASection<V>> getValue() {
         return propertySections;
     }
 

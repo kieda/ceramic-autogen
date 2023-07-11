@@ -15,7 +15,6 @@ public class ChainedAdvancerState<A extends AdvancerState, B extends AdvancerSta
     }
 
     private void syncPos() {
-        int maxPos = -1;
         boolean increaseA;
         while((increaseA = (advancerA.getPos() < advancerB.getPos() && !advancerA.isStopped())) ||
                 ((advancerB.getPos() < advancerA.getPos() && !advancerB.isStopped()))) {
@@ -24,9 +23,10 @@ public class ChainedAdvancerState<A extends AdvancerState, B extends AdvancerSta
             } else {
                 advancerB.increasePos();
             }
-            maxPos = Math.max(advancerA.getPos(), advancerB.getPos());
         }
-        while(super.getPos() < maxPos) {
+
+        int maxPos = Math.max(advancerA.getPos(), advancerB.getPos());
+        while(!super.isStopped() && super.getPos() < maxPos) {
             super.increasePos();
         }
     }
@@ -48,12 +48,12 @@ public class ChainedAdvancerState<A extends AdvancerState, B extends AdvancerSta
 
     @Override
     public boolean isStopped() {
-        return super.isStopped() && advancerA.isStopped() && advancerB.isStopped();
+        return advancerB.isStopped() || advancerA.isStopped() || super.isStopped();
     }
 
     @Override
     public boolean hasValue() {
-        return advancerA.hasValue() || advancerB.hasValue();
+        return advancerB.hasValue() || advancerA.hasValue();
     }
 
     @Override

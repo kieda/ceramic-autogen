@@ -1,10 +1,7 @@
 package io.hostilerobot.ceramicrelief.controller.parser;
 
 import io.hostilerobot.ceramicrelief.controller.ast.AQuotient;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.AdvancerDAG;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.ChainedAdvancerState;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.CharAdvancer;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.CompositeAdvancer;
+import io.hostilerobot.ceramicrelief.controller.parser.advancer.*;
 import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
 import org.apache.commons.math.fraction.Fraction;
 
@@ -80,7 +77,7 @@ public class AQuotientParser implements AParser<Fraction> {
         }
     }
 
-    private static class QuotientState extends ACommentParser.CommentState {
+    private static class QuotientState extends AdvancerState {
         // current part of the quotient
         private QuotientDAG currentPart = QuotientDAG.getStartState();
         private boolean sign = false; // false for +, true for -

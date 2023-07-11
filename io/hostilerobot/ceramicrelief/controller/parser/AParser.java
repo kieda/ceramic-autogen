@@ -49,7 +49,7 @@ public interface AParser<T> {
 
     public static final int RADIX = 10;
     public static final char[] RESERVED_CHARS = CharArrays.sort(
-        ',', '.', '=', '/', '\\', '#', '(', ')', '<', '>', '[', ']', '-'
+        ',', '=', '/', '\\', '#', '(', ')', '<', '>', '[', ']', '-', ':'
     );
     static final char[] ESCAPED_CHARS = CharArrays.sort(
         '\\', '[', ']', '-'
@@ -61,6 +61,4 @@ public interface AParser<T> {
         }
         return SmallCharSequence.make(c);
     }, RESERVED_CHARS) + "\\s";
-        //StringJoiner
-          //  "\\s,.=/\\\\#()<>\\[\\]-";
 }
