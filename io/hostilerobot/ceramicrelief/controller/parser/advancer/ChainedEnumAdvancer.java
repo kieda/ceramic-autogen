@@ -36,6 +36,7 @@ public class ChainedEnumAdvancer<T extends AdvancerState, Q extends Enum<Q> & Ch
                 }
             };
         }
+
         return advancers;
     }
 

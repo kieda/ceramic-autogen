@@ -5,10 +5,7 @@ import com.sun.net.httpserver.Filter;
 import io.hostilerobot.ceramicrelief.controller.ast.ANode;
 import io.hostilerobot.ceramicrelief.controller.ast.APair;
 import io.hostilerobot.ceramicrelief.controller.ast.NodePair;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.AdvancerDAG;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.ChainedAdvancerState;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.CharAdvancer;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.CompositeAdvancer;
+import io.hostilerobot.ceramicrelief.controller.parser.advancer.*;
 import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
 import io.hostilerobot.ceramicrelief.util.chars.CharPredicate;
 import io.hostilerobot.ceramicrelief.util.chars.SmallCharSequence;
@@ -42,7 +39,6 @@ import java.util.List;
 // permit explicit association using brackets '{' and '}'
 // todo - have interface method to allow each parser to declare our reserved chars and whether or not they need to be escaped (in a regex)
 // todo - change list to use '[' and ']'. Pairs can use '(' and ')'
-// todo - a section should not require a list of pairs. We could just have it require a list of values and have pairs as values
 public class APairParser<K, V> implements AParser<NodePair<K, V>> {
 
     // format:
@@ -148,6 +144,8 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     // if not in_list then PairCharType
     // if start_list or end_list then OTHER
     // otherwise do nothing
+
+    // todo change to sealed type and make PairMatchState generic
     private enum PairCharType implements CharAdvancer<PairMatchState> {
         OPEN_PAIR('{') {
             @Override
@@ -269,7 +267,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-    private static class PairMatchState<V> extends ACommentParser.CommentState {
+    private static class PairMatchState extends DAGAdvancerState<PairMatchState, PairDAG> {
         // look forward to find the end position of the value
         // if we are using GROUP type then this will remain -1
         private int valueIndex = -1;
@@ -278,9 +276,10 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         private PairDAG dag;
 
         private final CharSequence base;
-        private final List<AParser<V>> valParsers;
+        private final List<AParser> valParsers;
 
-        public PairMatchState(CharSequence base, List<AParser<V>> valParsers) {
+        public PairMatchState(CharSequence base, List<AParser> valParsers) {
+            super(PairDAG.START);
             this.base = base;
             this.valParsers = valParsers;
             pairDepth = 0;
@@ -294,7 +293,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
                 return valueIndex;
             int startIndex = getPos();
             CharSequence value = base.subSequence(startIndex, base.length());
-            for(AParser<V> vParser : valParsers) {
+            for(AParser vParser : valParsers) {
                 int matchIdx = vParser.match(value);
                 if(matchIdx >= 0) {
                     valueIndex = matchIdx + startIndex;
@@ -336,20 +335,25 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             return valueIndex;
         }
 
-        private void transition(PairDAG next) {
+        public void transition(PairDAG next) {
             if(!dag.isValidTransition(next))
                 throw new AParserException();
             next.onTransition(this);
             dag = next;
         }
+
+        @Override
+        protected void stop() {
+            super.stop();
+        }
     }
 
-    private static class PairParseState<K, V> extends PairMatchState<V> {
+    private static class PairParseState extends PairMatchState {
         private int itemBegin = -1;
         private int itemEnd = -1;
 
-        private final List<AParser<K>> keyParsers;
-        private PairParseState(CharSequence base, List<AParser<K>> keyParsers, List<AParser<V>> valParsers) {
+        private final List<AParser> keyParsers;
+        private PairParseState(CharSequence base, List<AParser> keyParsers, List<AParser> valParsers) {
             super(base, valParsers);
             this.keyParsers = keyParsers;
         }
@@ -364,14 +368,14 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             }
         }
 
-        private ANode<K> parsedKey = null;
-        private ANode<V> parsedVal = null;
+        private ANode parsedKey = null;
+        private ANode parsedVal = null;
 
         @Override
         protected void parseKey() {
             CharSequence target = itemBegin == itemEnd ?
                     SmallCharSequence.make() : super.base.subSequence(itemBegin, itemEnd);
-            for(AParser<K> kP : keyParsers) {
+            for(AParser kP : keyParsers) {
                 int size = kP.match(target);
                 if(size >= 0) {
                     if(size + itemBegin != itemEnd)
@@ -398,7 +402,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             CharSequence target = itemBegin == itemEnd ?
                     SmallCharSequence.make() : super.base.subSequence(start, end);
 
-            for(AParser<V> vP : super.valParsers) {
+            for(AParser vP : super.valParsers) {
                 int size = vP.match(target);
                 if(size >= 0) {
                     if(size + start != end)
@@ -429,7 +433,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             ACommentParser.buildCommentAdvancer(
                     AListParser.buildListMatcher(new CompositeAdvancer<>(PairCharType.values())));
 
-    private static <V> PairMatchState<V> advance(PairMatchState<V> state, CharSequence cs) {
+    private static  PairMatchState advance(PairMatchState state, CharSequence cs) {
         CharAdvancer.runAdvancer(cs,
                  ChainedAdvancerState.chain(new ACommentParser.CommentState(), new AListParser.ListMatchState(), state),
                 PAIR_MATCH_ADVANCER);
@@ -448,14 +452,17 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
 
     @Override
     public APair<K, V> parse(CharSequence cs) {
-        PairParseState<K, V> parseState = new PairParseState<>(cs, keyParsers, valParsers);
+        // so apparently java can auto-convert APair to APair<K, V> and Node to Node<K> easily
+        // compile time errors when manually casting from List<AParser<K>> to List<AParser>
+        // what??
+        PairParseState parseState = new PairParseState(cs, (List<AParser>)(Object)keyParsers, (List<AParser>)(Object)valParsers);
         advance(parseState, cs);
         return new APair<>(parseState.parsedKey, parseState.parsedVal);
     }
 
     @Override
     public int match(CharSequence cs) {
-        PairMatchState<V> matchState = new PairMatchState<>(cs, valParsers);
+        PairMatchState matchState = new PairMatchState(cs, (List<AParser>)(Object)valParsers);
         advance(matchState, cs);
         if(matchState.getDAG() == PairDAG.END) {
             int valueIndex = matchState.valueIndex;

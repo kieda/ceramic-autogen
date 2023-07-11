@@ -60,7 +60,7 @@ public class ASectionNameParser implements AParser<CharSequence> {
         WHITESPACE(Character::isWhitespace) {
             @Override
             public void accept(char c, SectionNameMatch state) {
-                switch(state.getDAG()) {
+                switch(state.getEnumState()) {
                     case FIRST_CHAR, NAME ->
                             // transition to SPACE
                             // unless we're at the start, then we could have whitespace before the name and colon
@@ -72,7 +72,7 @@ public class ASectionNameParser implements AParser<CharSequence> {
         OTHER(c -> true) {
             @Override
             public void accept(char c, SectionNameMatch state) {
-                switch(state.getDAG()) {
+                switch(state.getEnumState()) {
                     case START:
                             // transition to FIRST_CHAR, then check the leading char
                             state.transition(SectionNameDAG.FIRST_CHAR);
@@ -118,13 +118,9 @@ public class ASectionNameParser implements AParser<CharSequence> {
             return match.test(c, state);
         }
     }
-    private static class SectionNameMatch extends AdvancerState {
-        private SectionNameDAG dag;
+    private static class SectionNameMatch extends DAGAdvancerState<SectionNameMatch, SectionNameDAG> {
         SectionNameMatch() {
-            dag = SectionNameDAG.START;
-        }
-        public SectionNameDAG getDAG() {
-            return dag;
+            super(SectionNameDAG.START);
         }
 
         @Override
@@ -135,13 +131,6 @@ public class ASectionNameParser implements AParser<CharSequence> {
         @Override
         protected void stop() {
             super.stop();
-        }
-
-        private void transition(SectionNameDAG next) {
-            if(!dag.isValidTransition(next))
-                throw new AParserException();
-            next.onTransition(this);
-            dag = next;
         }
     }
     private static class SectionNameParse extends SectionNameMatch {
@@ -216,7 +205,7 @@ public class ASectionNameParser implements AParser<CharSequence> {
         CharAdvancer.runAdvancer(cs,
                 ChainedAdvancerState.chain(new ACommentParser.CommentState(), matchState),
                 SECTION_NAME_MATCH);
-        if(matchState.getDAG() == SectionNameDAG.COLON) {
+        if(matchState.getEnumState() == SectionNameDAG.COLON) {
             return matchState.getPos() + 1;
         }
         return -1;
