@@ -89,7 +89,8 @@ public class SmallCharSequence {
 
         @Override
         public CharSequence subSequence(int start, int end) {
-            if((start|end) < 0 || start > 2 || end > 2) {
+            int sub = end - start;
+            if((start|end|sub) < 0 || start > 2 || end > 2) {
                 throw new StringIndexOutOfBoundsException();
             }
 

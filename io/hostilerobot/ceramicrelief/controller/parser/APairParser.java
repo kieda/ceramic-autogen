@@ -5,11 +5,14 @@ import com.sun.net.httpserver.Filter;
 import io.hostilerobot.ceramicrelief.controller.ast.ANode;
 import io.hostilerobot.ceramicrelief.controller.ast.APair;
 import io.hostilerobot.ceramicrelief.controller.ast.NodePair;
+import io.hostilerobot.ceramicrelief.controller.ast.Pair;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.*;
+import io.hostilerobot.ceramicrelief.util.SealedEnum;
 import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
 import io.hostilerobot.ceramicrelief.util.chars.CharPredicate;
 import io.hostilerobot.ceramicrelief.util.chars.SmallCharSequence;
 
+import javax.crypto.SealedObject;
 import java.util.List;
 
 
@@ -146,6 +149,31 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     // otherwise do nothing
 
     // todo change to sealed type and make PairMatchState generic
+    // wow that's a lot of keywords
+    private static abstract sealed class PairCharType1 extends SealedEnum<PairCharType1> implements CharAdvancer<PairMatchState> {
+        public PairCharType1() {
+            super(PairCharType1.class);
+        }
+
+    }
+    private final static class OPEN_PAIR extends PairCharType1 {
+
+        @Override
+        public void accept(char c, PairMatchState state) {
+
+        }
+
+        @Override
+        public boolean test(char c, PairMatchState state) {
+            return false;
+        }
+    }
+    {
+        PairCharType1 myCharType = null;
+        switch(myCharType) {
+            case OPEN_PAIR p -> p.test('a', null);
+        }
+    }
     private enum PairCharType implements CharAdvancer<PairMatchState> {
         OPEN_PAIR('{') {
             @Override
