@@ -80,7 +80,9 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
      * | GROUP_START
      * START
      */
-    private enum PairDAG implements AdvancerDAG<PairMatchState, PairDAG> {
+
+    // todo - use sealed classes for DAG too!
+    private enum PairDAG<V> implements AdvancerDAG<PairMatchState<V>, PairDAG<V>> {
         END(PairType.DONE) {
             @Override
             public void onTransition(PairMatchState state) {
@@ -200,13 +202,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     }
     static boolean b = false;
     private final static class SEP_PAIR extends PairCharType {
-        SEP_PAIR() {
-            super('=');
-            if(!b) {
-                b = true;
-                new SEP_PAIR();
-            }
-        }
+        SEP_PAIR() { super('='); }
         @Override
         public void accept(char c, PairMatchState state) {
             PairType pairType = state.getDAG().getType();
@@ -295,128 +291,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-    private enum PairCharTypeOld implements CharAdvancer<PairMatchState> {
-        OPEN_PAIR('{') {
-            @Override
-            public void accept(char c, PairMatchState state) {
-                PairType pairType = state.getDAG().getType();
-                switch (pairType) {
-                    case GROUP:
-                    case RAW:
-                        if(pairType.getBaseDepth() == state.getPairDepth()) {
-                            state.encounterValueChar(c);
-                        }
-                        break;
-                    case UNKNOWN:
-                        state.transition(PairDAG.GROUP_START);
-                        break;
-                    default:
-                        throw new IllegalStateException();
-                }
-                // go in depth
-                state.pushPairDepth();
-            }
-        },
-        SEP_PAIR('=') {
-            @Override
-            public void accept(char c, PairMatchState state) {
-                PairType pairType = state.getDAG().getType();
-
-                if(pairType.getBaseDepth() == state.getPairDepth()) {
-                    // transition to next item
-                    switch(state.getDAG()) {
-                        case GROUP_START:
-                            // empty key
-                            state.transition(PairDAG.GROUP_KEY);
-                        case GROUP_KEY:
-                            state.transition(PairDAG.GROUP_SEP);
-                            break;
-                        case START:
-                            // empty key
-                            // e.g. "=123"
-                            state.transition(PairDAG.KEY);
-                        case KEY:
-                            state.transition(PairDAG.SEP);
-                            break;
-                    }
-                }
-            }
-        },
-        CLOSE_PAIR('}') {
-            @Override
-            public void accept(char c, PairMatchState state) {
-                int newDepth = state.popPairDepth();
-                PairType pairType = state.getDAG().getType();
-                if(newDepth == pairType.getBaseDepth()) {
-                    // this is part of a value at base depth
-                    state.encounterValueChar(c);
-                } else if(pairType == PairType.GROUP
-                        && newDepth == pairType.getBaseDepth() - 1) {
-                    if(state.getDAG() == PairDAG.GROUP_SEP) {
-                        // occurs in the following scenario:
-                        // "{ K =  }"
-                        // since we never find a valueChar for V, we have an incomplete transition
-                        state.transition(PairDAG.GROUP_VAL);
-                    }
-                    // transition to end and stop
-                    state.transition(PairDAG.GROUP_END);
-                    state.transition(PairDAG.END);
-                    state.stop();
-                } else if(newDepth < 0) {
-                    throw new AParserException("mismatched pair parentheses");
-                }
-            }
-        },
-        WHITESPACE(Character::isWhitespace) {
-            @Override
-            public void accept(char c, PairMatchState state) {
-                // do nothing
-            }
-        },
-        OTHER(c -> true) {
-            @Override
-            public void accept(char c, PairMatchState state) {
-                switch(state.getDAG()) {
-                    case START:
-                        state.transition(PairDAG.KEY);
-                        break;
-                    case SEP:
-                        state.transition(PairDAG.VAL);
-                        break;
-                    case GROUP_START:
-                        state.transition(PairDAG.GROUP_KEY);
-                        break;
-                    case GROUP_SEP:
-                        state.transition(PairDAG.GROUP_VAL);
-                        break;
-                }
-                PairType pairType = state.getDAG().getType();
-                final int baseDepth = pairType == PairType.UNKNOWN ? 0 :
-                        pairType.getBaseDepth();
-                if(state.getPairDepth() == baseDepth) {
-                    state.encounterValueChar(c);
-                }
-            }
-        };
-
-        private final CharBiPredicate<PairMatchState> match;
-        PairCharTypeOld(char flag) {
-            this(CharBiPredicate.from(flag));
-        }
-        PairCharTypeOld(CharPredicate match) {
-            this(CharBiPredicate.from(match));
-        }
-        PairCharTypeOld(CharBiPredicate<PairMatchState> match) {
-            this.match = match;
-        }
-
-        @Override
-        public boolean test(char c, PairMatchState state) {
-            return match.test(c, state);
-        }
-    }
-
-    private static class PairMatchState extends DAGAdvancerState<PairMatchState, PairDAG> {
+    private static class PairMatchState<V> extends DAGAdvancerState<PairMatchState<V>, PairDAG> {
         // look forward to find the end position of the value
         // if we are using GROUP type then this will remain -1
         private int valueIndex = -1;
@@ -425,9 +300,9 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         private PairDAG dag;
 
         private final CharSequence base;
-        private final List<AParser> valParsers;
+        private final List<AParser<V>> valParsers;
 
-        public PairMatchState(CharSequence base, List<AParser> valParsers) {
+        public PairMatchState(CharSequence base, List<AParser<V>> valParsers) {
             super(PairDAG.START);
             this.base = base;
             this.valParsers = valParsers;
@@ -442,7 +317,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
                 return valueIndex;
             int startIndex = getPos();
             CharSequence value = base.subSequence(startIndex, base.length());
-            for(AParser vParser : valParsers) {
+            for(AParser<V> vParser : valParsers) {
                 int matchIdx = vParser.match(value);
                 if(matchIdx >= 0) {
                     valueIndex = matchIdx + startIndex;
@@ -580,7 +455,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     //   this also permits comments anywhere in this string
     private static final CharAdvancer<ChainedAdvancerState<ACommentParser.CommentState, ChainedAdvancerState<AListParser.ListMatchState, PairMatchState>>> PAIR_MATCH_ADVANCER =
             ACommentParser.buildCommentAdvancer(
-                    AListParser.buildListMatcher(new CompositeAdvancer<>(PairCharTypeOld.values())));
+                    AListParser.buildListMatcher(new CompositeAdvancer<>(PairCharType.INSTANCE.values())));
 
     private static  PairMatchState advance(PairMatchState state, CharSequence cs) {
         CharAdvancer.runAdvancer(cs,

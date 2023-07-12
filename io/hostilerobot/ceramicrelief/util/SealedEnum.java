@@ -1,16 +1,11 @@
 package io.hostilerobot.ceramicrelief.util;
 
-import com.codepoetics.protonpack.StreamUtils;
-import org.apache.commons.collections4.ComparatorUtils;
 import org.apache.commons.collections4.list.UnmodifiableList;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.stream.IntStream;
-import java.util.stream.StreamSupport;
 
 /**
  * constructs enum-like instances for a sealed class. We keep a thread-safe static map to track enum instances
@@ -38,11 +33,35 @@ public class SealedEnum<T extends SealedEnum<T>> implements Comparable<T>{
     private static final Map<Class<? extends SealedEnum<?>>, Class<? extends SealedEnum<?>>> toBaseClass
             = new Hashtable<>();
 
+    private static final Map<Class<? extends SealedEnum<?>>, Boolean> SEEN = new Hashtable<>();
+
     private final boolean isBase;
 
-    private static <T extends SealedEnum<T>> boolean hasEntry(Class<T> base) {
+    private static <T extends SealedEnum<T>> boolean hasBaseEntry(Class<T> base) {
         return baseToInstance.containsKey(base);
     }
+
+    private static <T extends SealedEnum<T>> boolean isDuplicateEntry(Class<? extends T> enumVal) {
+        return SEEN.containsKey(enumVal);
+    }
+    private static <T extends SealedEnum<T>> boolean hasEnumEntry(Class<? extends T> enumVal) {
+        Class<T> base = (Class<T>) toBaseClass.get(enumVal);
+        if(base == null)
+            return false;
+        T baseEnum = getSealedEnum(base);
+        List<? extends SealedEnum<?>> inst = instances.get(base);
+        if(inst == null)
+            return false;
+        Map<Class<? extends SealedEnum<?>>, Integer> getOrdinal = toOrdinal.get(base);
+        if(getOrdinal == null)
+            return false;
+        Integer ordinal = getOrdinal.get(enumVal);
+        if(ordinal == null)
+            return false;
+        return ordinal >= 0 && ordinal < inst.size() && inst.get(ordinal) != null;
+    }
+
+
     private static <T extends SealedEnum<T>> void putEntries(Class<T> k, T v,
                                                            Map<Class<? extends SealedEnum<?>>, Integer> ordinals,
                                                            List<T> inst) {
@@ -68,7 +87,7 @@ public class SealedEnum<T extends SealedEnum<T>> implements Comparable<T>{
 
 
 
-    private static MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+//    private static MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     private static Set<StackWalker.Option> ALL_OPTIONS = EnumSet.allOf(StackWalker.Option.class);
 
     /*
@@ -110,7 +129,6 @@ public class SealedEnum<T extends SealedEnum<T>> implements Comparable<T>{
          }
          */
 
-    private final static Class<?>[] CLASS_ARRAY = new Class[0];
     protected SealedEnum(Class<T> base) {
         if(!base.isSealed())
             throw new IllegalArgumentException(base + " is not sealed!");
@@ -138,64 +156,8 @@ public class SealedEnum<T extends SealedEnum<T>> implements Comparable<T>{
          *       Class<MyEnumCase1>.getDeclaredConstructor().newInstance()
          * we check the stacktrace to ensure the instance was constructed this way
          */
-        int superClassCount = 0;
-
-        final Class<?> stopClass = SealedEnum.class.getSuperclass();
-        for(Class<?> traverse = getClass(); traverse != stopClass; traverse = traverse.getSuperclass()) {
-            superClassCount++;
-        }
 
         isBase = base == getClass();
-        Class<?>[] expectedStack;
-
-        if(isBase) {
-            expectedStack = new Class[superClassCount];
-        } else {
-            expectedStack = new Class[superClassCount + 1];
-            // last frame of stack should go back to SealedEnum
-            expectedStack[superClassCount] = SealedEnum.class;
-        }
-        int stackIdx = superClassCount;
-        for(Class<?> traverse = getClass(); traverse != stopClass; traverse = traverse.getSuperclass()) {
-            // fill in the opposite order such that SealedEnum is at 0 and our initial class is at (superClassCount -1)
-            expectedStack[(--stackIdx)] = traverse;
-        }
-        System.out.println(Arrays.toString(expectedStack));
-
-        boolean stacksMatch = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE).walk(stackFrameStream ->
-                StreamUtils.zipWithIndex(stackFrameStream//.limit(expectedStack.length)
-                        )
-                        .allMatch(stackFrameIndexed -> {
-
-            StackWalker.StackFrame actualFrame = stackFrameIndexed.getValue();
-            System.out.println(actualFrame);
-            if(stackFrameIndexed.getIndex() >= expectedStack.length)
-                return true;
-            Class<?> expectedClass = expectedStack[(int) stackFrameIndexed.getIndex()];
-            Class<?> actualClass = actualFrame.getDeclaringClass();
-
-            if(expectedClass != actualClass) {
-//                throw new IllegalArgumentException(expectedClass + " != " + actualClass);
-//                return false;
-            }
-
-            try {
-                // we find the constructor given our param list
-                Class<?>[] args = actualFrame.getMethodType().parameterList().toArray(CLASS_ARRAY);
-                return actualClass.getDeclaredConstructor(args) != null;
-            } catch(NoSuchMethodException ex) {
-                return false;
-            }
-            /*catch(IllegalAccessException ex)  {
-                ex.printStackTrace();
-                throw new SecurityException("cannot access constructor " + actualClass.getName() + "." + actualFrame.getMethodName() + actualFrame.getMethodType());
-            } */
-        }));
-
-        if(!stacksMatch) {
-            throw new IllegalArgumentException("Only the base enum " + base + " can be created by the user");
-        }
-
 
         // if(base == getClass())
         //    -- only permit this constructor to be called once for base
@@ -205,71 +167,100 @@ public class SealedEnum<T extends SealedEnum<T>> implements Comparable<T>{
         ok:{
             // isBase && hasEntry then we have already processed base => error
             // isBase && !hasEntry then we should process base since it's the first time => continue
-            // !isBase && hasEntry then we should do nothing => OK
+            // !isBase && hasEntry && hasEnumEntry(subClass) then we already processed subclass, someone's attempting to instantiate outside of reflection => error
+            // !isBase && hasEntry && !hasEnumEntry(subClass) then enum will be added => OK
             // !isBase && !hasEntry then we are processing subclass too early => error
 
             // todo - how do we want to deal with sealed classes that are not final?
             //    possibly: build a tree
-            boolean hasEntry = hasEntry(base);
+            Class<?> duplicateOffender = base;
+            boolean hasEntry = hasBaseEntry(base);
             duplicateError: // base should always be created first and exactly once.
-            if (isBase && !hasEntry) {
-                synchronized (base) {
-                    hasEntry = hasEntry(base);
-                    // lock and check again.
-                    if (!hasEntry) {
-                        // if we still don't have the entry, then create all subclasses
-                        Class<?>[] permitted = base.getPermittedSubclasses();
-                        final int enumCount = permitted.length;
-                        Map<Class<? extends SealedEnum<?>>, Integer> ordinalsForBase = new HashMap<>(enumCount);
-                        List<T> instancesForBase = new ArrayList<>(enumCount);
-
-                        // optimistically place entries. revert later if there's a problem
-                        putEntries(base, (T)this, ordinalsForBase, instancesForBase);
-                        int ordinal = 0;
-                        try {
-                            for (; ordinal < enumCount; ordinal++) {
-                                Class<? extends T> subClass = (Class<? extends T>) permitted[ordinal];
-                                if(!Modifier.isFinal(subClass.getModifiers())) {
-                                    // todo - consider how we could utilize non-final subclasses
-                                    //        and perhaps build a tree (?)
-                                    throw new ReflectiveOperationException("subclasses must be final");
-                                }
-                                toBaseClass.put(subClass, base);
-
-                                ordinalsForBase.put(subClass, ordinal);
-                                Constructor<? extends T> constructor = subClass.getDeclaredConstructor();
-                                if (!constructor.canAccess(null) && !constructor.trySetAccessible()) {
-                                    throw new SecurityException("cannot access SealedEnum constructor " + constructor);
-                                }
-                                T enumInstance = constructor.newInstance();
-                                instancesForBase.add(enumInstance);
-                                ordinalsForBase.put(subClass, ordinal);
-                            }
-                            break ok;
-                        } catch(ReflectiveOperationException ex) {
-                            // undo entries
-                            clearEntries(base);
-                            // undo base class mapping
-                            for (int j = 0; j < ordinal; j++) {
-                                Class<? extends T> subClass = (Class<? extends T>) permitted[j];
-                                toBaseClass.remove(subClass);
-                            }
-
-                            throw new IllegalArgumentException("all enums values must have zero-arg accessible constructors", ex);
+            {
+                if (!isDuplicateEntry(getClass())) {
+                    synchronized (base) {
+                        if(!isDuplicateEntry(getClass())) {
+                            SEEN.put((Class<? extends SealedEnum<?>>) getClass(), true);
+                        } else {
+                            duplicateOffender = getClass();
+                            break duplicateError;
                         }
-                    } else {
-                        // put the break explicitly here even though it falls through to exception without it
-                        // this case occurs if another thread initialized base in between the lock time
-                        // when this shouldn't happen!
-                        break duplicateError;
                     }
+                } else {
+                    duplicateOffender = getClass();
+                    break duplicateError;
                 }
-            } else if (isBase != hasEntry) {
-                // if this is the base, then we're attempting to initialize base a second time
-                break ok;
+
+                if (isBase && !hasEntry) {
+                    synchronized (base) {
+                        hasEntry = hasBaseEntry(base);
+                        // lock and check again.
+                        if (!hasEntry) {
+                            // if we still don't have the entry, then create all subclasses
+                            Class<?>[] permitted = base.getPermittedSubclasses();
+                            final int enumCount = permitted.length;
+                            Map<Class<? extends SealedEnum<?>>, Integer> ordinalsForBase = new HashMap<>(enumCount);
+                            List<T> instancesForBase = new ArrayList<>(enumCount);
+
+                            // optimistically place entries. revert later if there's a problem
+                            putEntries(base, (T) this, ordinalsForBase, instancesForBase);
+                            int ordinal = 0;
+                            try {
+                                for (; ordinal < enumCount; ordinal++) {
+                                    Class<? extends T> subClass = (Class<? extends T>) permitted[ordinal];
+                                    if (!Modifier.isFinal(subClass.getModifiers())) {
+                                        // todo - consider how we could utilize non-final subclasses
+                                        //        and perhaps build a tree (?)
+                                        throw new ReflectiveOperationException("subclasses must be final");
+                                    }
+
+                                    toBaseClass.put(subClass, base);
+                                    ordinalsForBase.put(subClass, ordinal);
+
+                                    //ordinalsForBase.put(subClass, ordinal);
+                                    Constructor<? extends T> constructor = subClass.getDeclaredConstructor();
+                                    if (!constructor.canAccess(null) && !constructor.trySetAccessible()) {
+                                        throw new SecurityException("cannot access SealedEnum constructor " + constructor);
+                                    }
+                                    T enumInstance = constructor.newInstance();
+                                    instancesForBase.add(enumInstance);
+                                }
+                                break ok;
+                            } catch (InvocationTargetException ex) {
+                                if (ex.getCause() instanceof RuntimeException rx) {
+                                    throw rx;
+                                } else {
+                                    throw new IllegalArgumentException(ex.getCause());
+                                }
+                            } catch (ReflectiveOperationException ex) {
+                                // undo entries
+                                clearEntries(base);
+                                // undo base class mapping
+                                for (int j = 0; j < ordinal; j++) {
+                                    Class<? extends T> subClass = (Class<? extends T>) permitted[j];
+                                    toBaseClass.remove(subClass);
+                                }
+
+                                throw new IllegalArgumentException("all enums values must have zero-arg accessible constructors", ex);
+                            }
+                        } else {
+                            // put the break explicitly here even though it falls through to exception without it
+                            // this case occurs if another thread initialized base in between the lock time
+                            // when this shouldn't happen!
+                            break duplicateError;
+                        }
+
+                    }
+                } else if (!isBase && hasEntry && hasEnumEntry(getClass())) {
+                    duplicateOffender = getClass();
+                    break duplicateError;
+                } else if (isBase != hasEntry) {
+                    // if this is the base, then we're attempting to initialize base a second time
+                    break ok;
+                }
             }
 
-            throw new IllegalStateException("attempting to initialize SealedEnum " + base + " more than once");
+            throw new IllegalStateException("attempting to initialize SealedEnum " + duplicateOffender.getSimpleName() + " more than once");
         }
     }
 
