@@ -1,18 +1,15 @@
 package io.hostilerobot.ceramicrelief.controller.parser;
 
 
-import com.sun.net.httpserver.Filter;
 import io.hostilerobot.ceramicrelief.controller.ast.ANode;
 import io.hostilerobot.ceramicrelief.controller.ast.APair;
 import io.hostilerobot.ceramicrelief.controller.ast.NodePair;
-import io.hostilerobot.ceramicrelief.controller.ast.Pair;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.*;
 import io.hostilerobot.ceramicrelief.util.SealedEnum;
 import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
 import io.hostilerobot.ceramicrelief.util.chars.CharPredicate;
 import io.hostilerobot.ceramicrelief.util.chars.SmallCharSequence;
 
-import javax.crypto.SealedObject;
 import java.util.List;
 
 
@@ -148,33 +145,157 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     // if start_list or end_list then OTHER
     // otherwise do nothing
 
-    // todo change to sealed type and make PairMatchState generic
-    // wow that's a lot of keywords
-    private static abstract sealed class PairCharType1 extends SealedEnum<PairCharType1> implements CharAdvancer<PairMatchState> {
-        public PairCharType1() {
-            super(PairCharType1.class);
+    // todo possibly switch over to pattern SealedEnum<PairCharType> se = SealedEnum.instance(PairCharType.class)
+    //     then se.values(), etc. work the same
+    //     and we wouldn't have to instantiate the PairCharType superclass and will only instantiate the sealed subclasses.
+
+    // todo do something like SealedEnumTree
+    //       values: Base{A, B, C{D, E, F}}
+    //       where Base has options A, B, C. C has options D, E, F
+    //       however, we would need to have a method to find the ordinal of D, E, F. Also we'll need to think if we want an explicit instance of C or if it would just delegate to D, E, F (useful if C abstract)
+    private static sealed class PairCharType extends SealedEnum<PairCharType> implements CharAdvancer<PairMatchState> {
+        public static final PairCharType INSTANCE = new PairCharType(c -> false);
+        private final CharBiPredicate<PairMatchState> match;
+        private PairCharType(CharBiPredicate<PairMatchState> match) {
+            super(PairCharType.class);
+            this.match = match;
+        }
+        private PairCharType(CharPredicate match){
+            this(CharBiPredicate.from(match));
         }
 
+        private PairCharType(char flag) {
+            this(CharBiPredicate.from(flag));
+        }
+        @Override
+        public boolean test(char c, PairMatchState state) {
+            return match.test(c, state);
+        }
+        @Override
+        public void accept(char c, PairMatchState state) {
+            throw new UnsupportedOperationException();
+        }
     }
-    private final static class OPEN_PAIR extends PairCharType1 {
+    private final static class OPEN_PAIR extends PairCharType {
+        OPEN_PAIR() {super('{');}
+        @Override
+        public void accept(char c, PairMatchState state) {
+            PairType pairType = state.getDAG().getType();
+            switch (pairType) {
+                case GROUP:
+                case RAW:
+                    if(pairType.getBaseDepth() == state.getPairDepth()) {
+                        state.encounterValueChar(c);
+                    }
+                    break;
+                case UNKNOWN:
+                    state.transition(PairDAG.GROUP_START);
+                    break;
+                default:
+                    throw new IllegalStateException();
+            }
+            // go in depth
+            state.pushPairDepth();
+        }
+    }
+    static boolean b = false;
+    private final static class SEP_PAIR extends PairCharType {
+        SEP_PAIR() {
+            super('=');
+            if(!b) {
+                b = true;
+                new SEP_PAIR();
+            }
+        }
+        @Override
+        public void accept(char c, PairMatchState state) {
+            PairType pairType = state.getDAG().getType();
+
+            if(pairType.getBaseDepth() == state.getPairDepth()) {
+                // transition to next item
+                switch(state.getDAG()) {
+                    case GROUP_START:
+                        // empty key
+                        state.transition(PairDAG.GROUP_KEY);
+                    case GROUP_KEY:
+                        state.transition(PairDAG.GROUP_SEP);
+                        break;
+                    case START:
+                        // empty key
+                        // e.g. "=123"
+                        state.transition(PairDAG.KEY);
+                    case KEY:
+                        state.transition(PairDAG.SEP);
+                        break;
+                }
+            }
+        }
+    }
+
+    private final static class CLOSE_PAIR extends PairCharType {
+        CLOSE_PAIR() {super('}');}
 
         @Override
         public void accept(char c, PairMatchState state) {
-
+            int newDepth = state.popPairDepth();
+            PairType pairType = state.getDAG().getType();
+            if(newDepth == pairType.getBaseDepth()) {
+                // this is part of a value at base depth
+                state.encounterValueChar(c);
+            } else if(pairType == PairType.GROUP
+                    && newDepth == pairType.getBaseDepth() - 1) {
+                if(state.getDAG() == PairDAG.GROUP_SEP) {
+                    // occurs in the following scenario:
+                    // "{ K =  }"
+                    // since we never find a valueChar for V, we have an incomplete transition
+                    state.transition(PairDAG.GROUP_VAL);
+                }
+                // transition to end and stop
+                state.transition(PairDAG.GROUP_END);
+                state.transition(PairDAG.END);
+                state.stop();
+            } else if(newDepth < 0) {
+                throw new AParserException("mismatched pair parentheses");
+            }
         }
+    }
+    private final static class WHITESPACE extends PairCharType{
+        WHITESPACE() {super(Character::isWhitespace);}
 
         @Override
-        public boolean test(char c, PairMatchState state) {
-            return false;
+        public void accept(char c, PairMatchState state) {
+            // do nothing
         }
     }
-    {
-        PairCharType1 myCharType = null;
-        switch(myCharType) {
-            case OPEN_PAIR p -> p.test('a', null);
+    private final static class OTHER extends PairCharType{
+        OTHER() {super(c -> true);}
+
+        @Override
+        public void accept(char c, PairMatchState state) {
+            switch(state.getDAG()) {
+                case START:
+                    state.transition(PairDAG.KEY);
+                    break;
+                case SEP:
+                    state.transition(PairDAG.VAL);
+                    break;
+                case GROUP_START:
+                    state.transition(PairDAG.GROUP_KEY);
+                    break;
+                case GROUP_SEP:
+                    state.transition(PairDAG.GROUP_VAL);
+                    break;
+            }
+            PairType pairType = state.getDAG().getType();
+            final int baseDepth = pairType == PairType.UNKNOWN ? 0 :
+                    pairType.getBaseDepth();
+            if(state.getPairDepth() == baseDepth) {
+                state.encounterValueChar(c);
+            }
         }
     }
-    private enum PairCharType implements CharAdvancer<PairMatchState> {
+
+    private enum PairCharTypeOld implements CharAdvancer<PairMatchState> {
         OPEN_PAIR('{') {
             @Override
             public void accept(char c, PairMatchState state) {
@@ -279,13 +400,13 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         };
 
         private final CharBiPredicate<PairMatchState> match;
-        PairCharType(char flag) {
+        PairCharTypeOld(char flag) {
             this(CharBiPredicate.from(flag));
         }
-        PairCharType(CharPredicate match) {
+        PairCharTypeOld(CharPredicate match) {
             this(CharBiPredicate.from(match));
         }
-        PairCharType(CharBiPredicate<PairMatchState> match) {
+        PairCharTypeOld(CharBiPredicate<PairMatchState> match) {
             this.match = match;
         }
 
@@ -459,7 +580,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     //   this also permits comments anywhere in this string
     private static final CharAdvancer<ChainedAdvancerState<ACommentParser.CommentState, ChainedAdvancerState<AListParser.ListMatchState, PairMatchState>>> PAIR_MATCH_ADVANCER =
             ACommentParser.buildCommentAdvancer(
-                    AListParser.buildListMatcher(new CompositeAdvancer<>(PairCharType.values())));
+                    AListParser.buildListMatcher(new CompositeAdvancer<>(PairCharTypeOld.values())));
 
     private static  PairMatchState advance(PairMatchState state, CharSequence cs) {
         CharAdvancer.runAdvancer(cs,
@@ -499,5 +620,9 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             return (valueIndex >= 0 ? valueIndex : matchState.getPos()) + 1;
         }
         return -1;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(PairCharType.INSTANCE.values());
     }
 }
