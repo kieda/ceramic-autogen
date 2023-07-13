@@ -249,7 +249,6 @@ public class SealedEnum<T extends SealedEnum<T>> implements Comparable<T>{
                             // when this shouldn't happen!
                             break duplicateError;
                         }
-
                     }
                 } else if (!isBase && hasEntry && hasEnumEntry(getClass())) {
                     duplicateOffender = getClass();

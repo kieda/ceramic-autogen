@@ -1,6 +1,7 @@
 package io.hostilerobot.ceramicrelief.controller.parser.advancer;
 
-import io.hostilerobot.ceramicrelief.util.SealedEnum;
+
+import io.hostilerobot.sealedenum.SealedEnum;
 
 import java.util.EnumMap;
 import java.util.List;
