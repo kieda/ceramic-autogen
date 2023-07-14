@@ -161,19 +161,6 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
 
     // note that we don't need to do the same thing for pairs in lists, since lists are always delimited with ( and )
 
-    // boolean in_list
-    // if not in_list then PairCharType
-    // if start_list or end_list then OTHER
-    // otherwise do nothing
-
-    // todo possibly switch over to pattern SealedEnum<PairCharType> se = SealedEnum.instance(PairCharType.class)
-    //     then se.values(), etc. work the same
-    //     and we wouldn't have to instantiate the PairCharType superclass and will only instantiate the sealed subclasses.
-
-    // todo do something like SealedEnumTree
-    //       values: Base{A, B, C{D, E, F}}
-    //       where Base has options A, B, C. C has options D, E, F
-    //       however, we would need to have a method to find the ordinal of D, E, F. Also we'll need to think if we want an explicit instance of C or if it would just delegate to D, E, F (useful if C abstract)
     private static sealed class PairCharType<V> extends SealedEnum<PairCharType<V>> implements CharAdvancer<PairMatchState<V>> {
         public static final PairCharType INSTANCE = new PairCharType(c -> false);
         private final CharBiPredicate<PairMatchState<V>> match;

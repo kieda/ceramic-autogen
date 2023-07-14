@@ -26,50 +26,63 @@ public class AQuotientParser implements AParser<Fraction> {
         public END() {super();}
 
         @Override public void onTransition(QuotientState state) {
-            if(state.getEnumState() == getSealedEnum(DENOMINATOR.class)) {
+            if(state.getEnumState() == DENOMINATOR) {
                 // if we transitioned to END from INTEGER we don't want to do anything as there is no denominator component
                 state.denominatorComponent = state.parseCurrentInt();
                 // don't reset the current index
             }}}
+    public static final END END = SealedEnum.getSealedEnum(END.class);
+
     //          .. 1/2
     private static final class DENOMINATOR extends QuotientDAG{
-        protected DENOMINATOR() {super(getSealedEnum(END.class));}}
+        protected DENOMINATOR() {super(END);}}
+    public static final DENOMINATOR DENOMINATOR = SealedEnum.getSealedEnum(DENOMINATOR.class);
+
     //          .. 1/2..
     private static final class NUMERATOR extends QuotientDAG{
-        protected NUMERATOR() {super(getSealedEnum(DENOMINATOR.class));}
+        protected NUMERATOR() {super(DENOMINATOR);}
 
         @Override public void onTransition(QuotientState state) {
             state.numeratorComponent = state.parseCurrentInt();
             state.resetCurrentInt();
         }}
+    public static final NUMERATOR NUMERATOR = SealedEnum.getSealedEnum(NUMERATOR.class);
+
     //          .. 3±1/..
     private static final class SECOND_SIGN extends QuotientDAG{
-        protected SECOND_SIGN() {super(getSealedEnum(NUMERATOR.class));}
+        protected SECOND_SIGN() {super(NUMERATOR);}
 
         @Override public void onTransition(QuotientState state) {
             // we reset here because it is on the critical path to numerator/denominator
             // this allows us to transition to END from INTEGER while keeping our endIdx
             state.resetCurrentInt();
         }}
+    public static final SECOND_SIGN SECOND_SIGN = SealedEnum.getSealedEnum(SECOND_SIGN.class);
+
     //      .. 3 1/..      .. 3±..      ..3
     private static final class INTEGER extends QuotientDAG{
         // having just an integer is a valid quotient
-        protected INTEGER() {super(getSealedEnum(SECOND_SIGN.class), getSealedEnum(END.class));}
+        protected INTEGER() {super(SECOND_SIGN, END);}
 
         @Override public void onTransition(QuotientState state) {
             state.integerComponent = state.parseCurrentInt();
         }}
+    public static final INTEGER INTEGER = SealedEnum.getSealedEnum(INTEGER.class);
+
     //         ±3 ...   ±3
     private static final class FIRST_ITEM extends QuotientDAG{
         // transition here after we complete the first item
-        protected FIRST_ITEM() {super(getSealedEnum(INTEGER.class), getSealedEnum(NUMERATOR.class));}}
+        protected FIRST_ITEM() {super(INTEGER, NUMERATOR);}}
+    public static final FIRST_ITEM FIRST_ITEM = SealedEnum.getSealedEnum(FIRST_ITEM.class);
     //         ±3 ...
     private static final class FIRST_SIGN extends QuotientDAG{
         // we may have a sign followed by an integer or a numerator
-        protected FIRST_SIGN() {super(getSealedEnum(FIRST_ITEM.class));}}
+        protected FIRST_SIGN() {super(FIRST_ITEM);}}
+    public static final FIRST_SIGN FIRST_SIGN = SealedEnum.getSealedEnum(FIRST_SIGN.class);
     //    3 ..        ± ..
     private static final class START extends QuotientDAG{
-        protected START() {super(getSealedEnum(FIRST_ITEM.class), getSealedEnum(FIRST_SIGN.class));}}
+        protected START() {super(FIRST_ITEM, FIRST_SIGN);}}
+    public static final START START = SealedEnum.getSealedEnum(START.class);
 
 
     /**
@@ -88,7 +101,7 @@ public class AQuotientParser implements AParser<Fraction> {
 
         private final CharSequence baseSequence;
         private QuotientState(CharSequence baseSequence) {
-            super(SealedEnum.getSealedEnum(START.class));
+            super(START);
             this.baseSequence = baseSequence;
         }
 
@@ -145,14 +158,14 @@ public class AQuotientParser implements AParser<Fraction> {
                         //      ^
                         // "±123 4/.." FIRST_ITEM => INTEGER => SECOND_SIGN
                         //       ^
-                        state.transition(SealedEnum.getSealedEnum(INTEGER.class));
+                        state.transition(INTEGER);
                         state.sign = false;
-                        state.transition(SealedEnum.getSealedEnum(SECOND_SIGN.class));
+                        state.transition(SECOND_SIGN);
                     }
                     case NUMERATOR n -> {
                         // "... 1/ 3" NUMERATOR => DENOMINATOR
                         //         ^
-                        state.transition(SealedEnum.getSealedEnum(DENOMINATOR.class));
+                        state.transition(DENOMINATOR);
                     }
                     default -> {}
                 }
@@ -195,19 +208,19 @@ public class AQuotientParser implements AParser<Fraction> {
                         if(!state.hasValue()) {
                             // set the sign and transition to first sign
                             state.sign = sign;
-                            state.transition(SealedEnum.getSealedEnum(FIRST_SIGN.class));
+                            state.transition(FIRST_SIGN);
                             yield null; // end transition
                         }
                         // we already have values.
                         // traverse START => FIRST_SIGN => FIRST_ITEM
-                        yield SealedEnum.getSealedEnum(FIRST_SIGN.class);
+                        yield FIRST_SIGN;
                     }
                     // first item is now seen
-                    case FIRST_SIGN s -> SealedEnum.getSealedEnum(FIRST_ITEM.class);
+                    case FIRST_SIGN s -> FIRST_ITEM;
                     case FIRST_ITEM s -> {
-                        state.transition(SealedEnum.getSealedEnum(INTEGER.class));
+                        state.transition(INTEGER);
                         state.sign = sign;
-                        yield SealedEnum.getSealedEnum(SECOND_SIGN.class);
+                        yield SECOND_SIGN;
                     }
                     default -> null;
                 });
@@ -243,14 +256,14 @@ public class AQuotientParser implements AParser<Fraction> {
                 // "123 456 / 789 -- SECOND_SIGN => NUMERATOR
                 //          ^
                 QuotientDAG end = state.runTransition(enumState -> switch (enumState) {
-                    case START s -> SealedEnum.getSealedEnum(FIRST_SIGN.class);
+                    case START s -> FIRST_SIGN;
                     // disallow "/..." and "±/..."
-                    case FIRST_SIGN s -> !state.hasValue() ? null : SealedEnum.getSealedEnum(FIRST_ITEM.class);
-                    case SECOND_SIGN s -> SealedEnum.getSealedEnum(NUMERATOR.class);
-                    case FIRST_ITEM s -> SealedEnum.getSealedEnum(NUMERATOR.class);
+                    case FIRST_SIGN s -> !state.hasValue() ? null : FIRST_ITEM;
+                    case SECOND_SIGN s -> NUMERATOR;
+                    case FIRST_ITEM s -> NUMERATOR;
                     default -> null;
                 });
-                if(end != SealedEnum.getSealedEnum(NUMERATOR.class)) {
+                if(end != NUMERATOR) {
                     // there was an error while parsing, should be at numerator
                     // todo - make an explicit ERROR class
                     state.stop();
@@ -272,7 +285,7 @@ public class AQuotientParser implements AParser<Fraction> {
             @Override
             public void accept(char c, QuotientState state) {
                 state.runTransition(enumState -> switch (enumState) {
-                    case DENOMINATOR d -> SealedEnum.getSealedEnum(END.class);
+                    case DENOMINATOR d -> END;
                     case END e -> {
                         // DENOMINATOR => END
                         // "123 / 457 "
@@ -281,7 +294,7 @@ public class AQuotientParser implements AParser<Fraction> {
                         state.stop();
                         yield null;
                     }
-                    case START s -> state.hasValue() ? SealedEnum.getSealedEnum(FIRST_ITEM.class) : null;
+                    case START s -> state.hasValue() ? FIRST_ITEM : null;
                     case FIRST_SIGN f ->
 
                         // {START|FIRST_SIGN} => FIRST_ITEM
@@ -289,7 +302,7 @@ public class AQuotientParser implements AParser<Fraction> {
                         //     ^
                         // "123 "
                         //     ^
-                        state.hasValue() ? SealedEnum.getSealedEnum(FIRST_ITEM.class) : null;
+                        state.hasValue() ? FIRST_ITEM : null;
                     default -> null;
 
                 });
@@ -322,15 +335,15 @@ public class AQuotientParser implements AParser<Fraction> {
                     //     ^
                     // "±123)"
                     //      ^
-                    case START s -> SealedEnum.getSealedEnum(FIRST_ITEM.class);
-                    case FIRST_SIGN s -> SealedEnum.getSealedEnum(FIRST_ITEM.class);
+                    case START s -> FIRST_ITEM;
+                    case FIRST_SIGN s -> FIRST_ITEM;
                     // FIRST_ITEM => INTEGER => END
                     // "123 )"
                     //     ^
-                    case FIRST_ITEM s -> SealedEnum.getSealedEnum(INTEGER.class);
+                    case FIRST_ITEM s -> INTEGER;
                     case INTEGER i -> null;
                     // transition to the end and stop
-                    case DENOMINATOR d -> SealedEnum.getSealedEnum(END.class);
+                    case DENOMINATOR d -> END;
                     default -> {
                         // END case should also stop and yield null
                         state.stop();
@@ -379,8 +392,8 @@ public class AQuotientParser implements AParser<Fraction> {
         state.runTransition(enumState -> switch (enumState) {
             // we ran through the entire sequence, which ends with DENOMINATOR or INTEGER
             // transition to the end.
-            case DENOMINATOR d -> state.getPos() == cs.length() ? SealedEnum.getSealedEnum(END.class) : null;
-            case INTEGER i -> state.getPos() == cs.length() ? SealedEnum.getSealedEnum(END.class) : null;
+            case DENOMINATOR d -> state.getPos() == cs.length() ? END : null;
+            case INTEGER i -> state.getPos() == cs.length() ? END : null;
             case END e -> {
                 if(!state.isStopped())
                     state.stop();
@@ -399,7 +412,7 @@ public class AQuotientParser implements AParser<Fraction> {
     @Override
     public int match(CharSequence cs) {
         QuotientState state = advance(cs);
-        if(state.getEnumState() == SealedEnum.getSealedEnum(END.class)) {
+        if(state.getEnumState() == END) {
             // we use endIdx to handle cases like the following:
             // "123  "
             //      ^ end pos
