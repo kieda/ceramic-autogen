@@ -3,81 +3,80 @@ package io.hostilerobot.ceramicrelief.controller.parser;
 import io.hostilerobot.ceramicrelief.controller.ast.AQuotient;
 import io.hostilerobot.ceramicrelief.controller.parser.advancer.*;
 import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
+import io.hostilerobot.sealedenum.SealedEnum;
 import org.apache.commons.math.fraction.Fraction;
 
 public class AQuotientParser implements AParser<Fraction> {
 
-    /**
-     * state transitions for quotient parsing
-     */
-    private enum QuotientDAG implements AdvancerDAG<QuotientState, QuotientDAG> {
-        END() {
-            @Override
-            public void onTransition(QuotientState state) {
-                if(state.getEnumState() == QuotientDAG.DENOMINATOR) {
-                    // if we transitioned to END from INTEGER we don't want to do anything as there is no denominator component
-                    state.denominatorComponent = state.parseCurrentInt();
-                    // don't reset the current index
-                }
-            }
-        },
-        //          .. 1/2
-        DENOMINATOR(END),
-        //          .. 1/2..
-        NUMERATOR(DENOMINATOR) {
-            @Override
-            public void onTransition(QuotientState state) {
-                state.numeratorComponent = state.parseCurrentInt();
-                state.resetCurrentInt();
-            }
-        },
-        //          .. 3±1/..
-        SECOND_SIGN(NUMERATOR) {
-            @Override
-            public void onTransition(QuotientState state) {
-                // we reset here because it is on the critical path to numerator/denominator
-                // this allows us to transition to END from INTEGER while keeping our endIdx
-                state.resetCurrentInt();
-            }
-        },
-        //      .. 3 1/..      .. 3±..      ..3
-        INTEGER(SECOND_SIGN, END) { // having just an integer is a valid quotient
-            @Override
-            public void onTransition(QuotientState state) {
-                state.integerComponent = state.parseCurrentInt();
-            }
-        },
-        //         ±3 ...   ±3 /
-        FIRST_ITEM(INTEGER, NUMERATOR), // transition here after we complete the first item
-        //         ±3 ...
-        FIRST_SIGN(FIRST_ITEM), // we may have a sign followed by an integer or a numerator
-        //    3 ..        ± ..
-        START(FIRST_ITEM, FIRST_SIGN)
-        ;
+    private static sealed class QuotientDAG extends SealedEnum<QuotientDAG> implements SealedAdvancerDAG<QuotientState, QuotientDAG> {
+        public static final QuotientDAG INSTANCE = new QuotientDAG();
         private final QuotientDAG[] transitions;
-        QuotientDAG(QuotientDAG... transitions) {
+        protected QuotientDAG(QuotientDAG... transitions) {
+            super(QuotientDAG.class);
             this.transitions = transitions;
         }
+
+        @Override
         public QuotientDAG[] getTransitions() {
             return transitions;
         }
-        public static QuotientDAG getStartState() {
-            return START;
-        }
-        public static QuotientDAG getEndState() {
-            return END;
-        }
-
-        public boolean isValidTransition(QuotientDAG next) {
-            for(QuotientDAG nPossible : this.getTransitions()) {
-                if(nPossible == next)
-                    return true;
-            }
-            return false;
-        }
     }
 
-    private static class QuotientState extends DAGAdvancerState<QuotientState, QuotientDAG> {
+    private static final class END extends QuotientDAG{
+        public END() {super();}
+
+        @Override public void onTransition(QuotientState state) {
+            if(state.getEnumState() == getSealedEnum(DENOMINATOR.class)) {
+                // if we transitioned to END from INTEGER we don't want to do anything as there is no denominator component
+                state.denominatorComponent = state.parseCurrentInt();
+                // don't reset the current index
+            }}}
+    //          .. 1/2
+    private static final class DENOMINATOR extends QuotientDAG{
+        protected DENOMINATOR() {super(getSealedEnum(END.class));}}
+    //          .. 1/2..
+    private static final class NUMERATOR extends QuotientDAG{
+        protected NUMERATOR() {super(getSealedEnum(DENOMINATOR.class));}
+
+        @Override public void onTransition(QuotientState state) {
+            state.numeratorComponent = state.parseCurrentInt();
+            state.resetCurrentInt();
+        }}
+    //          .. 3±1/..
+    private static final class SECOND_SIGN extends QuotientDAG{
+        protected SECOND_SIGN() {super(getSealedEnum(NUMERATOR.class));}
+
+        @Override public void onTransition(QuotientState state) {
+            // we reset here because it is on the critical path to numerator/denominator
+            // this allows us to transition to END from INTEGER while keeping our endIdx
+            state.resetCurrentInt();
+        }}
+    //      .. 3 1/..      .. 3±..      ..3
+    private static final class INTEGER extends QuotientDAG{
+        // having just an integer is a valid quotient
+        protected INTEGER() {super(getSealedEnum(SECOND_SIGN.class), getSealedEnum(END.class));}
+
+        @Override public void onTransition(QuotientState state) {
+            state.integerComponent = state.parseCurrentInt();
+        }}
+    //         ±3 ...   ±3
+    private static final class FIRST_ITEM extends QuotientDAG{
+        // transition here after we complete the first item
+        protected FIRST_ITEM() {super(getSealedEnum(INTEGER.class), getSealedEnum(NUMERATOR.class));}}
+    //         ±3 ...
+    private static final class FIRST_SIGN extends QuotientDAG{
+        // we may have a sign followed by an integer or a numerator
+        protected FIRST_SIGN() {super(getSealedEnum(FIRST_ITEM.class));}}
+    //    3 ..        ± ..
+    private static final class START extends QuotientDAG{
+        protected START() {super(getSealedEnum(FIRST_ITEM.class), getSealedEnum(FIRST_SIGN.class));}}
+
+
+    /**
+     * state transitions for quotient parsing
+     */
+
+    private static class QuotientState extends SealedDAGState<QuotientState, QuotientDAG> {
         // current part of the quotient
         private boolean sign = false; // false for +, true for -
         private int startIdx = -1;
@@ -89,7 +88,7 @@ public class AQuotientParser implements AParser<Fraction> {
 
         private final CharSequence baseSequence;
         private QuotientState(CharSequence baseSequence) {
-            super(QuotientDAG.getStartState());
+            super(SealedEnum.getSealedEnum(START.class));
             this.baseSequence = baseSequence;
         }
 
@@ -140,73 +139,92 @@ public class AQuotientParser implements AParser<Fraction> {
         DECIMAL(CharBiPredicate.from(c -> c >= '0' && c <= '9')) {
             @Override
             public void accept(char c, QuotientState state) {
-                switch(state.getEnumState()) {
-                    case FIRST_ITEM:
+                switch (state.getEnumState()) {
+                    case FIRST_ITEM f -> {
                         // "123 4/.." FIRST_ITEM => INTEGER => SECOND_SIGN
                         //      ^
                         // "±123 4/.." FIRST_ITEM => INTEGER => SECOND_SIGN
                         //       ^
-                        state.transition(QuotientDAG.INTEGER);
+                        state.transition(SealedEnum.getSealedEnum(INTEGER.class));
                         state.sign = false;
-                        state.transition(QuotientDAG.SECOND_SIGN);
-                        break;
-                    case NUMERATOR:
+                        state.transition(SealedEnum.getSealedEnum(SECOND_SIGN.class));
+                    }
+                    case NUMERATOR n -> {
                         // "... 1/ 3" NUMERATOR => DENOMINATOR
                         //         ^
-                        state.transition(QuotientDAG.DENOMINATOR);
+                        state.transition(SealedEnum.getSealedEnum(DENOMINATOR.class));
+                    }
+                    default -> {}
                 }
 
                 state.encounterValueChar(c);
             }
         },
-        SIGN((c, t) -> {
+        SIGN((c, t) ->
             // sign is only valid when before the integer part and before the numerator
             // examples:
             // + 123
             // - 123 + 123/456
             // - 123 / 456
             // 123 - 123/456
-            if(c != '+' && c != '-')
-                return false;
 
-            switch(t.getEnumState()) {
-                case START:
-                    // ±123 => FIRST_SIGN
-                    // ^
-                    // 123± => FIRST_ITEM => INTEGER => SECOND_SIGN
-                    //    ^
-                case FIRST_ITEM:
-                    // ±123 ±  => INTEGER => SECOND_SIGN
-                    //      ^
-                    // 123 ±   => INTEGER => SECOND_SIGN
-                    //     ^
-                    return true;
-                case FIRST_SIGN:
-                    // ±123± => FIRST_ITEM => INTEGER => SECOND_SIGN
-                    //     ^
-                    return t.hasValue();
-                default:
-                    return false;
-            }}) {
+             (c != '+' && c != '-') && switch(t.getEnumState()) {
+                // ±123 => FIRST_SIGN
+                // ^
+                // 123± => FIRST_ITEM => INTEGER => SECOND_SIGN
+                //    ^
+                case START s -> true;
+                // ±123 ±  => INTEGER => SECOND_SIGN
+                //      ^
+                // 123 ±   => INTEGER => SECOND_SIGN
+                //     ^
+                case FIRST_ITEM f -> true;
+                // ±123± => FIRST_ITEM => INTEGER => SECOND_SIGN
+                //     ^
+                case FIRST_SIGN f -> t.hasValue();
+                default -> false;
+            }) {
             @Override
             public void accept(char c, QuotientState state) {
                 boolean sign = c == '-'; // set the sign
-                switch(state.getEnumState()) {
-                    case START:
+                // todo -1 3/4 == -7/4
+                //      not -1/4
+                // todo run stop() early if we encounter an error.
+                state.runTransition(enumState -> switch (enumState) {
+                    case START s -> {
                         if(!state.hasValue()) {
                             // set the sign and transition to first sign
                             state.sign = sign;
-                            state.transition(QuotientDAG.FIRST_SIGN);
-                            break;
+                            state.transition(SealedEnum.getSealedEnum(FIRST_SIGN.class));
+                            yield null; // end transition
                         }
-                    case FIRST_SIGN:
-                        // first item is now seen
-                        state.transition(QuotientDAG.FIRST_ITEM);
-                    case FIRST_ITEM:
-                        state.transition(QuotientDAG.INTEGER);
+                        // we already have values.
+                        // traverse START => FIRST_SIGN => FIRST_ITEM
+                        yield SealedEnum.getSealedEnum(FIRST_SIGN.class);
+                    }
+                    // first item is now seen
+                    case FIRST_SIGN s -> SealedEnum.getSealedEnum(FIRST_ITEM.class);
+                    case FIRST_ITEM s -> {
+                        state.transition(SealedEnum.getSealedEnum(INTEGER.class));
                         state.sign = sign;
-                        state.transition(QuotientDAG.SECOND_SIGN);
-                }
+                        yield SealedEnum.getSealedEnum(SECOND_SIGN.class);
+                    }
+                    default -> null;
+                });
+//                switch(state.getEnumState()) {
+//                    case START:
+//                        if(!state.hasValue()) {
+//                            state.sign = sign;
+//                            state.transition(QuotientDAG1.FIRST_SIGN);
+//                            break;
+//                        }
+//                    case FIRST_SIGN:
+//                        state.transition(QuotientDAG1.FIRST_ITEM);
+//                    case FIRST_ITEM:
+//                        state.transition(QuotientDAG1.INTEGER);
+//                        state.sign = sign;
+//                        state.transition(QuotientDAG1.SECOND_SIGN);
+//                }
             }
         },
         FRAC('/') {
@@ -224,74 +242,114 @@ public class AQuotientParser implements AParser<Fraction> {
                 //            ^
                 // "123 456 / 789 -- SECOND_SIGN => NUMERATOR
                 //          ^
-                switch(state.getEnumState()) {
-                    case START:
-                    case FIRST_SIGN:
-                        state.transition(QuotientDAG.FIRST_ITEM);
-                    case SECOND_SIGN:
-                    case FIRST_ITEM:
-                        state.transition(QuotientDAG.NUMERATOR);
-                        break;
-                    default:
-                        throw new AParserException();
+                QuotientDAG end = state.runTransition(enumState -> switch (enumState) {
+                    case START s -> SealedEnum.getSealedEnum(FIRST_SIGN.class);
+                    // disallow "/..." and "±/..."
+                    case FIRST_SIGN s -> !state.hasValue() ? null : SealedEnum.getSealedEnum(FIRST_ITEM.class);
+                    case SECOND_SIGN s -> SealedEnum.getSealedEnum(NUMERATOR.class);
+                    case FIRST_ITEM s -> SealedEnum.getSealedEnum(NUMERATOR.class);
+                    default -> null;
+                });
+                if(end != SealedEnum.getSealedEnum(NUMERATOR.class)) {
+                    // there was an error while parsing, should be at numerator
+                    // todo - make an explicit ERROR class
+                    state.stop();
                 }
+//                switch(state.getEnumState()) {
+//                    case START:
+//                    case FIRST_SIGN:
+//                        state.transition(QuotientDAG1.FIRST_ITEM);
+//                    case SECOND_SIGN:
+//                    case FIRST_ITEM:
+//                        state.transition(QuotientDAG1.NUMERATOR);
+//                        break;
+//                    default:
+//                        throw new AParserException();
+//                }
             }
         },
         WHITESPACE(CharBiPredicate.from(Character::isWhitespace)) {
             @Override
             public void accept(char c, QuotientState state) {
-                switch(state.getEnumState()) {
-                    case DENOMINATOR:
+                state.runTransition(enumState -> switch (enumState) {
+                    case DENOMINATOR d -> SealedEnum.getSealedEnum(END.class);
+                    case END e -> {
                         // DENOMINATOR => END
                         // "123 / 457 "
                         //           ^
                         // transition to the end and stop
-                        state.transition(QuotientDAG.END);
                         state.stop();
-                        break;
-                    case START:
-                    case FIRST_SIGN:
-                        if(state.hasValue()) {
-                            // {START|FIRST_SIGN} => FIRST_ITEM
-                            // "123 / 457"
-                            //     ^
-                            // "123 "
-                            //     ^
-                            state.transition(QuotientDAG.FIRST_ITEM);
-                        }
-                }
+                        yield null;
+                    }
+                    case START s -> state.hasValue() ? SealedEnum.getSealedEnum(FIRST_ITEM.class) : null;
+                    case FIRST_SIGN f ->
+
+                        // {START|FIRST_SIGN} => FIRST_ITEM
+                        // "123 / 457"
+                        //     ^
+                        // "123 "
+                        //     ^
+                        state.hasValue() ? SealedEnum.getSealedEnum(FIRST_ITEM.class) : null;
+                    default -> null;
+
+                });
+//                switch(state.getEnumState()) {
+//                    case DENOMINATOR:
+//                        state.transition(QuotientDAG1.END);
+//                        state.stop();
+//                        break;
+//                    case START:
+//                    case FIRST_SIGN:
+//                        if(state.hasValue()) {
+//
+//                            state.transition(QuotientDAG1.FIRST_ITEM);
+//                        }
+//                }
             }
         },
         OTHER((c, t) -> true) {
             @Override
             public void accept(char c, QuotientState state) {
-                if(!state.hasValue())
+                if(!state.hasValue()) {
                     // cannot end with no value
-                    throw new AParserException();
-                switch(state.getEnumState()) {
-                    case START:
-                    case FIRST_SIGN:
-                        // {START|FIRST_SIGN} => FIRST_ITEM => INTEGER => END.
-                        // "123)"
-                        //     ^
-                        // "±123)"
-                        //      ^
-                        state.transition(QuotientDAG.FIRST_ITEM);
-                    case FIRST_ITEM:
-                        // FIRST_ITEM => INTEGER => END
-                        // "123 )"
-                        //     ^
-                        state.transition(QuotientDAG.INTEGER);
-                    case DENOMINATOR:
-                        // transition to the end and stop
-                        state.transition(QuotientDAG.END);
-                        state.stop();
-                        break;
-                    default:
-                        // throw an exception - we shouldn't expect any other characters in a quotient
-                        throw new AParserException();
-
+//                    throw new AParserException();
+                    state.stop();
+                    return;
                 }
+                state.runTransition(enumState -> switch (enumState) {
+                    // {START|FIRST_SIGN} => FIRST_ITEM => INTEGER => END.
+                    // "123)"
+                    //     ^
+                    // "±123)"
+                    //      ^
+                    case START s -> SealedEnum.getSealedEnum(FIRST_ITEM.class);
+                    case FIRST_SIGN s -> SealedEnum.getSealedEnum(FIRST_ITEM.class);
+                    // FIRST_ITEM => INTEGER => END
+                    // "123 )"
+                    //     ^
+                    case FIRST_ITEM s -> SealedEnum.getSealedEnum(INTEGER.class);
+                    case INTEGER i -> null;
+                    // transition to the end and stop
+                    case DENOMINATOR d -> SealedEnum.getSealedEnum(END.class);
+                    default -> {
+                        // END case should also stop and yield null
+                        state.stop();
+                        yield null;
+                    }
+                });
+//                switch(state.getEnumState()) {
+//                    case START:
+//                    case FIRST_SIGN:
+//                        state.transition(QuotientDAG1.FIRST_ITEM);
+//                    case FIRST_ITEM:
+//                        state.transition(QuotientDAG1.INTEGER);
+//                    case DENOMINATOR:
+//                        state.transition(QuotientDAG1.END);
+//                        state.stop();
+//                        break;
+//                    default:
+//                        throw new AParserException();
+//                }
             }
         };
 
@@ -318,16 +376,18 @@ public class AQuotientParser implements AParser<Fraction> {
         //        like below
         QuotientState state = new QuotientState(cs);
         CharAdvancer.runAdvancer(cs, new ChainedAdvancerState<>(new ACommentParser.CommentState(), state), QUOTIENT_ADVANCER);
-        switch(state.getEnumState()) {
-            case DENOMINATOR:
-            case INTEGER:
-                if(state.getPos() == cs.length()) {
-                    // we ran through the entire sequence, which ends with DENOMINATOR or INTEGER
-                    // transition to the end.
-                    state.transition(QuotientDAG.END);
+        state.runTransition(enumState -> switch (enumState) {
+            // we ran through the entire sequence, which ends with DENOMINATOR or INTEGER
+            // transition to the end.
+            case DENOMINATOR d -> state.getPos() == cs.length() ? SealedEnum.getSealedEnum(END.class) : null;
+            case INTEGER i -> state.getPos() == cs.length() ? SealedEnum.getSealedEnum(END.class) : null;
+            case END e -> {
+                if(!state.isStopped())
                     state.stop();
-                }
-        }
+                yield null;
+            }
+            default -> null;
+        });
         return state;
     }
     @Override
@@ -339,7 +399,7 @@ public class AQuotientParser implements AParser<Fraction> {
     @Override
     public int match(CharSequence cs) {
         QuotientState state = advance(cs);
-        if(state.getEnumState() == QuotientDAG.getEndState()) {
+        if(state.getEnumState() == SealedEnum.getSealedEnum(END.class)) {
             // we use endIdx to handle cases like the following:
             // "123  "
             //      ^ end pos

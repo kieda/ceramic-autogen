@@ -83,7 +83,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
      */
 
     private static sealed class PairDAG<V> extends SealedEnum<PairDAG<V>> implements SealedAdvancerDAG<PairMatchState<V>, PairDAG<V>> {
-        public static PairDAG INSTANCE = new PairDAG(null, null);
+        public static final PairDAG INSTANCE = new PairDAG(null);
         private final PairDAG<V>[] transitions;
         private final PairType type;
         protected PairDAG(PairType type, PairDAG<V>... transitions) {
