@@ -82,7 +82,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
      * START
      */
 
-    private static sealed class PairDAG<V> extends SealedEnum<PairDAG<V>> implements SealedAdvancerDAG<PairMatchState<V>, PairDAG<V>> {
+    private static sealed class PairDAG<V> extends SealedEnum<PairDAG<V>> implements DAGAdvancer<PairMatchState<V>, PairDAG<V>> {
         public static final PairDAG INSTANCE = new PairDAG(null);
         private final PairDAG<V>[] transitions;
         private final PairType type;
@@ -291,7 +291,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-    private static class PairMatchState<V> extends SealedDAGState<PairMatchState<V>, PairDAG<V>> {
+    private static class PairMatchState<V> extends DAGState<PairMatchState<V>, PairDAG<V>> {
         // look forward to find the end position of the value
         // if we are using GROUP type then this will remain -1
         private int valueIndex = -1;

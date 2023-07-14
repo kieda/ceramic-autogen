@@ -8,7 +8,7 @@ import org.apache.commons.math.fraction.Fraction;
 
 public class AQuotientParser implements AParser<Fraction> {
 
-    private static sealed class QuotientDAG extends SealedEnum<QuotientDAG> implements SealedAdvancerDAG<QuotientState, QuotientDAG> {
+    private static sealed class QuotientDAG extends SealedEnum<QuotientDAG> implements DAGAdvancer<QuotientState, QuotientDAG> {
         public static final QuotientDAG INSTANCE = new QuotientDAG();
         private final QuotientDAG[] transitions;
         protected QuotientDAG(QuotientDAG... transitions) {
@@ -76,7 +76,7 @@ public class AQuotientParser implements AParser<Fraction> {
      * state transitions for quotient parsing
      */
 
-    private static class QuotientState extends SealedDAGState<QuotientState, QuotientDAG> {
+    private static class QuotientState extends DAGState<QuotientState, QuotientDAG> {
         // current part of the quotient
         private boolean sign = false; // false for +, true for -
         private int startIdx = -1;

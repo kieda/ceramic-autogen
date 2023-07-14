@@ -19,40 +19,40 @@ public class ASectionNameParser implements AParser<CharSequence> {
 
     //'io.hostilerobot.ceramicrelief.controller.parser.ASectionNameParser.SectionNameDAG1' is not within its bound; should extend
     // 'io.hostilerobot.sealedenum.SealedEnum<io.hostilerobot.ceramicrelief.controller.parser.ASectionNameParser.SectionNameDAG1>'
-    private static sealed class SectionNameDAG1 extends SealedEnum<SectionNameDAG1> implements SealedAdvancerDAG<SectionNameMatch, SectionNameDAG1> {
-        private static final SectionNameDAG1 INSTANCE = new SectionNameDAG1();
-        private final SectionNameDAG1[] transitions;
-        protected SectionNameDAG1(SectionNameDAG1... transitions) {
-            super(SectionNameDAG1.class);
+    private static sealed class SectionNameDAG extends SealedEnum<SectionNameDAG> implements DAGAdvancer<SectionNameMatch, SectionNameDAG> {
+        private static final SectionNameDAG INSTANCE = new SectionNameDAG();
+        private final SectionNameDAG[] transitions;
+        protected SectionNameDAG(SectionNameDAG... transitions) {
+            super(SectionNameDAG.class);
             this.transitions = transitions;
         }
 
         @Override
-        public SectionNameDAG1[] getTransitions() {
+        public SectionNameDAG[] getTransitions() {
             return transitions;
         }
     }
-    private static final class COLON extends SectionNameDAG1{
+    private static final class COLON extends SectionNameDAG {
         private COLON() {super();}}
-    private static final SectionNameDAG1 COLON = SealedEnum.getSealedEnum(COLON.class);
+    private static final SectionNameDAG COLON = SealedEnum.getSealedEnum(COLON.class);
 
     // name must be continuous, cannot have two parts broken by whitespace
     // we add this to the DAG to signify the property
-    private static final class SPACE extends SectionNameDAG1{
+    private static final class SPACE extends SectionNameDAG {
         private SPACE() {super(COLON);}}
-    private static final SectionNameDAG1 SPACE = SealedEnum.getSealedEnum(SPACE.class);
-    private static final class NAME extends SectionNameDAG1{
+    private static final SectionNameDAG SPACE = SealedEnum.getSealedEnum(SPACE.class);
+    private static final class NAME extends SectionNameDAG {
         private NAME() {super(SPACE, COLON);}}
-    private static final SectionNameDAG1 NAME = SealedEnum.getSealedEnum(NAME.class);
+    private static final SectionNameDAG NAME = SealedEnum.getSealedEnum(NAME.class);
 
     // first char has different rules compared to rest of the name
     // we add this to the DAG to signify this property and transition
-    private static final class FIRST_CHAR extends SectionNameDAG1{
+    private static final class FIRST_CHAR extends SectionNameDAG {
         private FIRST_CHAR() {super(SPACE, COLON, NAME);}}
-    private static final SectionNameDAG1 FIRST_CHAR = SealedEnum.getSealedEnum(FIRST_CHAR.class);
-    private static final class START extends SectionNameDAG1{
+    private static final SectionNameDAG FIRST_CHAR = SealedEnum.getSealedEnum(FIRST_CHAR.class);
+    private static final class START extends SectionNameDAG {
         private START() {super(FIRST_CHAR, COLON);}}
-    private static final SectionNameDAG1 START = SealedEnum.getSealedEnum(START.class);
+    private static final SectionNameDAG START = SealedEnum.getSealedEnum(START.class);
 
     /* two ways of parsing the following:
      * abc : def : ghi :
@@ -139,7 +139,7 @@ public class ASectionNameParser implements AParser<CharSequence> {
             return match.test(c, state);
         }
     }
-    private static class SectionNameMatch extends SealedDAGState<SectionNameMatch, SectionNameDAG1> {
+    private static class SectionNameMatch extends DAGState<SectionNameMatch, SectionNameDAG> {
         SectionNameMatch() {
             super(START);
         }

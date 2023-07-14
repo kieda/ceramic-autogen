@@ -1,15 +1,13 @@
 package io.hostilerobot.ceramicrelief.controller.parser.advancer;
 
-import io.hostilerobot.ceramicrelief.controller.parser.APairParser;
 import io.hostilerobot.ceramicrelief.controller.parser.AParserException;
 import io.hostilerobot.sealedenum.SealedEnum;
 
-import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
-public class SealedDAGState<S extends SealedDAGState<S, X>, X extends SealedEnum<X> & SealedAdvancerDAG<S, X>> extends AdvancerState{
+public class DAGState<S extends DAGState<S, X>, X extends SealedEnum<X> & DAGAdvancer<S, X>> extends AdvancerState{
     private X enumState;
-    public SealedDAGState(X startState) {
+    public DAGState(X startState) {
         this.enumState = startState;
     }
     public void transition(X next) {
