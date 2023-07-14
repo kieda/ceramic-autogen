@@ -41,7 +41,6 @@ import java.util.function.UnaryOperator;
 // todo - have interface method to allow each parser to declare our reserved chars and whether or not they need to be escaped (in a regex)
 // todo - change list to use '[' and ']'. Pairs can use '(' and ')'
 public class APairParser<K, V> implements AParser<NodePair<K, V>> {
-
     // format:
     //   '{' K '=' V '}' : GROUP
     //   K '=' V         : RAW
@@ -106,42 +105,59 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             // parse the val
             state.parseValue();
         }}
+    public static final END END = SealedEnum.getSealedEnum(END.class);
+
     // K '=' V without association
     private static final class VAL<V> extends PairDAG<V> {
-        protected VAL() { super(PairType.RAW, getSealedEnum(END.class)); }
+        protected VAL() { super(PairType.RAW, END); }
         @Override public void onTransition(PairMatchState<V> state) {
             // we have encountered the first char of V
             // we look forward and find the value length
             state.findValueIndex();
         }}
+    public static final VAL VAL = SealedEnum.getSealedEnum(VAL.class);
+
     private static final class SEP<V> extends PairDAG<V> {
-        protected SEP() { super(PairType.RAW, getSealedEnum(VAL.class)); }
+        protected SEP() { super(PairType.RAW, VAL); }
         @Override public void onTransition(PairMatchState<V> state) {
             // we encountered '='
             // parse and get the key
             state.parseKey();
         }}
+    public static final SEP SEP = SealedEnum.getSealedEnum(SEP.class);
+
     private static final class KEY<V> extends PairDAG<V> {
-        protected KEY() {super(PairType.RAW, getSealedEnum(SEP.class));}}
+        protected KEY() {super(PairType.RAW, SEP);}}
+    public static final KEY KEY = SealedEnum.getSealedEnum(KEY.class);
+
     // '{' K '=' V '}' with grouped association
     private static final class GROUP_END<V> extends PairDAG<V> {
-        protected GROUP_END() {super(PairType.GROUP, getSealedEnum(END.class));}}
-    private static final class GROUP_VAL<V> extends PairDAG<V> {
-        protected GROUP_VAL() {super(PairType.GROUP, getSealedEnum(GROUP_END.class));}}
-    private static final class GROUP_SEP<V> extends PairDAG<V> {
-        protected GROUP_SEP() {super(PairType.GROUP, getSealedEnum(GROUP_VAL.class));}
+        protected GROUP_END() {super(PairType.GROUP, END);}}
+    public static final GROUP_END GROUP_END = SealedEnum.getSealedEnum(GROUP_END.class);
 
+    private static final class GROUP_VAL<V> extends PairDAG<V> {
+        protected GROUP_VAL() {super(PairType.GROUP, GROUP_END);}}
+    public static final GROUP_VAL GROUP_VAL = SealedEnum.getSealedEnum(GROUP_VAL.class);
+
+    private static final class GROUP_SEP<V> extends PairDAG<V> {
+        protected GROUP_SEP() {super(PairType.GROUP, GROUP_VAL);}
         @Override public void onTransition(PairMatchState<V> state) {
             // get the key
             state.parseKey();
         }}
+    public static final GROUP_SEP GROUP_SEP = SealedEnum.getSealedEnum(GROUP_SEP.class);
+
     private static final class GROUP_KEY<V> extends PairDAG<V> {
-        protected GROUP_KEY() {super(PairType.GROUP, getSealedEnum(GROUP_SEP.class));}}
+        protected GROUP_KEY() {super(PairType.GROUP, SEP);}}
+    public static final GROUP_END GROUP_KEY = SealedEnum.getSealedEnum(GROUP_END.class);
+
     private static final class GROUP_START<V> extends PairDAG<V> {
-        protected GROUP_START() {super(PairType.GROUP, getSealedEnum(GROUP_KEY.class));}}
+        protected GROUP_START() {super(PairType.GROUP, GROUP_KEY);}}
+    public static final GROUP_END GROUP_START = SealedEnum.getSealedEnum(GROUP_END.class);
     // starting point
     private static final class START<V> extends PairDAG<V> {
-        protected START() {super(PairType.UNKNOWN, getSealedEnum(GROUP_START.class), getSealedEnum(KEY.class));}}
+        protected START() {super(PairType.UNKNOWN, GROUP_START, KEY);}}
+    public static final START START = SealedEnum.getSealedEnum(START.class);
 
     // note that we don't need to do the same thing for pairs in lists, since lists are always delimited with ( and )
 
@@ -195,7 +211,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
                     }
                     break;
                 case UNKNOWN:
-                    state.transition(getSealedEnum(GROUP_START.class));
+                    state.transition(GROUP_START);
                     break;
                 default:
                     throw new IllegalStateException();
@@ -207,14 +223,14 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     private final static class SEP_PAIR<V> extends PairCharType<V> {
         SEP_PAIR() { super('='); }
         private final UnaryOperator<PairDAG<V>> transitions = enumState -> switch(enumState) {
-            case GROUP_START<V> s -> getSealedEnum(GROUP_KEY.class);
+            case GROUP_START<V> s -> GROUP_KEY;
             // empty key
             // e.g. "{  =123}"
-            case GROUP_KEY<V> s -> getSealedEnum(GROUP_SEP.class);
+            case GROUP_KEY<V> s -> GROUP_SEP;
             // empty key
             // e.g. "=123"
-            case START<V> s -> getSealedEnum(KEY.class);
-            case KEY<V> s -> getSealedEnum(SEP.class);
+            case START<V> s -> KEY;
+            case KEY<V> s -> SEP;
             // GROUP_SEP and SEP end the transition chain, so all chains will terminate
             default -> null;
         };
@@ -243,15 +259,15 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
                     && newDepth == pairType.getBaseDepth() - 1) {
 
 
-                if(state.getEnumState() == getSealedEnum(GROUP_SEP.class)) {
+                if(state.getEnumState() == GROUP_SEP) {
                     // occurs in the following scenario:
                     // "{ K =  }"
                     // since we never find a valueChar for V, we have an incomplete transition
-                    state.transition(getSealedEnum(GROUP_VAL.class));
+                    state.transition(GROUP_VAL);
                 }
                 // transition to end and stop
-                state.transition(getSealedEnum(GROUP_END.class));
-                state.transition(getSealedEnum(END.class));
+                state.transition(GROUP_END);
+                state.transition(END);
                 state.stop();
             } else if(newDepth < 0) {
                 throw new AParserException("mismatched pair parentheses");
@@ -272,10 +288,10 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         private final UnaryOperator<PairDAG<V>> transitions = enumState -> switch(enumState) {
             // note that each result will be mapped to a value not in the matrix
             // so it will map to null after one transition.
-            case START<V> s -> getSealedEnum(KEY.class);
-            case SEP<V> s -> getSealedEnum(VAL.class);
-            case GROUP_START<V> s -> getSealedEnum(GROUP_KEY.class);
-            case GROUP_SEP<V> s -> getSealedEnum(GROUP_VAL.class);
+            case START<V> s -> KEY;
+            case SEP<V> s -> VAL;
+            case GROUP_START<V> s -> GROUP_KEY;
+            case GROUP_SEP<V> s -> GROUP_VAL;
             default -> null;
         };
 
@@ -302,7 +318,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         private final List<AParser<V>> valParsers;
 
         public PairMatchState(CharSequence base, List<AParser<V>> valParsers) {
-            super(SealedEnum.getSealedEnum(START.class));
+            super(START);
             this.base = base;
             this.valParsers = valParsers;
             pairDepth = 0;
@@ -331,11 +347,11 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         @Override
         protected void encounterValueChar(char c) {
             super.encounterValueChar(c);
-            if(getEnumState() == SealedEnum.getSealedEnum(VAL.class) &&
+            if(getEnumState() == VAL &&
                     (getValueIndex() > 0 && getPos() >= getValueIndex())) {
                 // we reached the last index of the value.
                 // transition to the end and stop
-                transition(SealedEnum.getSealedEnum(END.class));
+                transition(END);
                 stop();
             }
         }
@@ -449,14 +465,14 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         CharAdvancer.runAdvancer(cs,
                  ChainedAdvancerState.chain(new ACommentParser.CommentState(), new AListParser.ListMatchState(), state),
                 PAIR_MATCH_ADVANCER);
-        if(!state.isStopped() && state.getEnumState() == SealedEnum.getSealedEnum(SEP.class)) {
+        if(!state.isStopped() && state.getEnumState() == SEP) {
             // may occur with the following:
             // "K '='  "
             //        ^
             //        EOF/end of section
             // we advance to VAL then to END
-            state.transition(SealedEnum.getSealedEnum(VAL.class));
-            state.transition(SealedEnum.getSealedEnum(END.class));
+            state.transition(VAL);
+            state.transition(END);
             state.stop();
         }
         return state;
@@ -476,7 +492,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     public int match(CharSequence cs) {
         PairMatchState<V> matchState = new PairMatchState<>(cs, valParsers);
         advance(matchState, cs);
-        if(matchState.getEnumState() == SealedEnum.getSealedEnum(END.class)) {
+        if(matchState.getEnumState() == END) {
             int valueIndex = matchState.valueIndex;
             // return the valueIndex if we're a RAW pair, otherwise we know pos ends at '}'
             // and this is included in our match.
