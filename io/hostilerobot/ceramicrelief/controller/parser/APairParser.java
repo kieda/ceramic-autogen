@@ -148,7 +148,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     public static final GROUP_SEP GROUP_SEP = SealedEnum.getSealedEnum(GROUP_SEP.class);
 
     private static final class GROUP_KEY<V> extends PairDAG<V> {
-        protected GROUP_KEY() {super(PairType.GROUP, SEP);}}
+        protected GROUP_KEY() {super(PairType.GROUP, GROUP_SEP);}}
     public static final GROUP_END GROUP_KEY = SealedEnum.getSealedEnum(GROUP_END.class);
 
     private static final class GROUP_START<V> extends PairDAG<V> {
