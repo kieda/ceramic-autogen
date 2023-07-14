@@ -1,8 +1,6 @@
 package io.hostilerobot.ceramicrelief.controller.parser;
 
 import io.hostilerobot.ceramicrelief.controller.ast.*;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.AdvancerDAG;
-import io.hostilerobot.ceramicrelief.controller.parser.advancer.AdvancerState;
 
 import java.util.List;
 
