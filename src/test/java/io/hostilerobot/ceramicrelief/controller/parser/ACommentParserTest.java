@@ -11,7 +11,6 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.*;
 import static io.hostilerobot.ceramicrelief.controller.parser.ParserTests.*;
 
-//@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ACommentParserTest {
     private static ACommentParser parser;
 

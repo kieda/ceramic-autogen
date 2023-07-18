@@ -467,9 +467,6 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
 
     @Override
     public APair<K, V> parse(CharSequence cs) {
-        // so apparently java can auto-convert APair to APair<K, V> and Node to Node<K> easily
-        // compile time errors when manually casting from List<AParser<K>> to List<AParser>
-        // what??
         PairParseState<K, V> parseState = new PairParseState<>(cs, keyParsers, valParsers);
         advance(parseState, cs);
         return new APair<>(parseState.parsedKey, parseState.parsedVal);
@@ -486,9 +483,5 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             return (valueIndex >= 0 ? valueIndex : matchState.getPos()) + 1;
         }
         return -1;
-    }
-
-    public static void main(String[] args) {
-        System.out.println(PairCharType.INSTANCE.values());
     }
 }

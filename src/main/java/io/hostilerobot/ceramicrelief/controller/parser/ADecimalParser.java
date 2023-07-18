@@ -23,21 +23,10 @@ public class ADecimalParser implements AParser<Double> {
             return -1;
         MatchResult res = m.toMatchResult();
         // input [+-](\\.)? is invalid
-        // do this by checking if both capture groups have 0 size
+        // this case is handled by checking if both capture groups have 0 size
         if(((res.end(1) - res.start(1)) | (res.end(2) - res.start(2))) == 0) {
             return -1;
         }
         return res.end();
-    }
-
-    public static void main(String[] args) {
-        //                                    0123456
-        Matcher m = DOUBLE_PAT.matcher("-");
-        m.find();
-        MatchResult res = m.toMatchResult();
-        System.out.println(res.start(1)
-         + " " + res.end(1) +
-                " " + res.start(2) + " " + res.end(2));
-        System.out.println(((res.end(1) - res.start(1)) | (res.end(2) - res.start(2))) == 0);
     }
 }
