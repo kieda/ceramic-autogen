@@ -386,6 +386,7 @@ public class DFSMeshPartitionTraversal implements MeshPartitionTraversal {
                 if(!elem.placeAllVertices()) {
                     // new triangle shares an edge with an existing triangle in the texture, defined by p1p2.
                     p1 = tVertices.get(adjacentEdge2d.getV1());
+
                     p2 = tVertices.get(adjacentEdge2d.getV2());
 
                     // 2d vector from p1 to p2

@@ -10,6 +10,7 @@ public class AComment implements ANode<CharSequence> {
         return comment;
     }
 
+    // comment isn't a value, so its size is 0
     @Override
     public int size() {
         return 0;

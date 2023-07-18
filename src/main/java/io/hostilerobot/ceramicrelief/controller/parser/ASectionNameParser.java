@@ -97,11 +97,10 @@ public class ASectionNameParser implements AParser<CharSequence> {
                         if((c >= '0' && c <= '9')
                                 || Arrays.binarySearch(AParser.RESERVED_CHARS, c) >= 0) {
                             state.stop();
-                            yield null;
                         } else {
                             state.encounterValueChar(c);
-                            yield FIRST_CHAR;
                         }
+                        yield null;
                     }
                     // transition to NAME, then check non-leading char
                     case FIRST_CHAR fc -> NAME;

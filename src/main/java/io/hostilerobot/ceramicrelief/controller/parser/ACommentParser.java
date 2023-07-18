@@ -19,7 +19,7 @@ public class ACommentParser implements AParser<CharSequence> {
     @Override
     public int match(CharSequence cs) {
         CommentState cas = new CommentState(true);
-        if(CommentCharType.COMMENT_BEGIN.test(cs.charAt(0), cas)) {
+        if(!cs.isEmpty() && CommentCharType.COMMENT_BEGIN.test(cs.charAt(0), cas)) {
             CharAdvancer.runAdvancer(cs, cas, COMMENT_ADVANCER);
             return cas.getCommentEnd();
         }
