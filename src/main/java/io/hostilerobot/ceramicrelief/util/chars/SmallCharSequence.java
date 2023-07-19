@@ -27,6 +27,26 @@ public class SmallCharSequence {
         public boolean isEmpty() {
             return true;
         }
+
+        @Override
+        public String toString() {
+            return "";
+        }
+
+        @Override
+        public int hashCode() {
+            return "".hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if(this == obj)
+                return true;
+            if(obj instanceof CharSequence cs) {
+                return cs.isEmpty();
+            }
+            return false;
+        }
     }
     private static class SingleChar implements CharSequence{
         private final char value;
@@ -63,9 +83,33 @@ public class SmallCharSequence {
             }
             throw new StringIndexOutOfBoundsException();
         }
+
+        private String toString = null;
+        @Override
+        public String toString() {
+            if(toString == null)
+                toString = String.valueOf(value);
+            return toString;
+        }
+        @Override
+        public int hashCode() {
+            return toString().hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if(obj == this)
+                return true;
+            if(obj instanceof SingleChar one) {
+                return one.value == this.value;
+            } else if(obj instanceof CharSequence other && other.length() == this.length()) {
+                return other.charAt(0) == this.charAt(0);
+            }
+            return false;
+        }
     }
 
-    private static class DoubleChar implements CharSequence {
+    private final static class DoubleChar implements CharSequence {
         private final char first;
         private final char second;
         private DoubleChar(char first, char second) {
@@ -106,6 +150,31 @@ public class SmallCharSequence {
                     return this;
             }
         }
+
+        private String toString = null;
+        @Override
+        public String toString() {
+            if(toString == null)
+                toString = String.valueOf(new char[]{first, second});
+            return toString;
+        }
+
+        @Override
+        public int hashCode() {
+            return toString().hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if(obj == this)
+                return true;
+            if(obj instanceof DoubleChar two) {
+                return two.first == this.first && two.second == this.second;
+            } else if(obj instanceof CharSequence other && other.length() == this.length()) {
+                return other.charAt(0) == this.charAt(0) && other.charAt(1) == this.charAt(1);
+            }
+            return false;
+        }
     }
 
     public static CharSequence make() {
@@ -116,12 +185,5 @@ public class SmallCharSequence {
     }
     public static CharSequence make(char a, char b) {
         return new DoubleChar(a, b);
-    }
-
-    public static void main(String[] args) {
-        String s = "a";
-        System.out.println(s.subSequence(0,0));
-        System.out.println(s.subSequence(1,1));
-//        System.out.println(s.subSequence(-1,-1));
     }
 }

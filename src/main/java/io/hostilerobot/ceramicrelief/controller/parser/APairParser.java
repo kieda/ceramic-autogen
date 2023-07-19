@@ -302,9 +302,9 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         private int pairDepth;
 
         private final CharSequence base;
-        private final List<AParser<V>> valParsers;
+        private final List<AParser<? extends V>> valParsers;
 
-        public PairMatchState(CharSequence base, List<AParser<V>> valParsers) {
+        public PairMatchState(CharSequence base, List<AParser<? extends V>> valParsers) {
             super(START);
             this.base = base;
             this.valParsers = valParsers;
@@ -319,7 +319,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
                 return valueIndex;
             int startIndex = getPos();
             CharSequence value = base.subSequence(startIndex, base.length());
-            for(AParser<V> vParser : valParsers) {
+            for(AParser<? extends V> vParser : valParsers) {
                 int matchIdx = vParser.match(value);
                 if(matchIdx >= 0) {
                     valueIndex = matchIdx + startIndex;
@@ -367,8 +367,8 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         private int itemBegin = -1;
         private int itemEnd = -1;
 
-        private final List<AParser<K>> keyParsers;
-        private PairParseState(CharSequence base, List<AParser<K>> keyParsers, List<AParser<V>> valParsers) {
+        private final List<AParser<? extends K>> keyParsers;
+        private PairParseState(CharSequence base, List<AParser<? extends K>> keyParsers, List<AParser<? extends V>> valParsers) {
             super(base, valParsers);
             this.keyParsers = keyParsers;
         }
@@ -383,14 +383,14 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             }
         }
 
-        private ANode<K> parsedKey = null;
-        private ANode<V> parsedVal = null;
+        private ANode<? extends K> parsedKey = null;
+        private ANode<? extends V> parsedVal = null;
 
         @Override
         protected void parseKey() {
-            CharSequence target = itemBegin == itemEnd ?
-                    SmallCharSequence.make() : super.base.subSequence(itemBegin, itemEnd);
-            for(AParser<K> kP : keyParsers) {
+            CharSequence target = (itemBegin|itemEnd) < 0 ?
+                    SmallCharSequence.make() : super.base.subSequence(itemBegin, itemEnd + 1);
+            for(AParser<? extends K> kP : keyParsers) {
                 int size = kP.match(target);
                 if(size >= 0) {
                     if(size + itemBegin != itemEnd)
@@ -414,10 +414,10 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             } else {
                 end = itemEnd;
             }
-            CharSequence target = itemBegin == itemEnd ?
+            CharSequence target = (itemBegin|itemEnd) < 0 ?
                     SmallCharSequence.make() : super.base.subSequence(start, end);
 
-            for(AParser<V> vP : super.valParsers) {
+            for(AParser<? extends V> vP : super.valParsers) {
                 int size = vP.match(target);
                 if(size >= 0) {
                     if(size + start != end)
@@ -430,12 +430,13 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-    private final List<AParser<K>> keyParsers;
-    private final List<AParser<V>> valParsers;
+    private final List<AParser<? extends K>> keyParsers;
+    private final List<AParser<? extends V>> valParsers;
 
-    public APairParser(List<AParser<K>> keyParsers, List<AParser<V>> valParsers) {
-        this.keyParsers = keyParsers;
-        this.valParsers = valParsers;
+    public APairParser(List<AParser<? extends K>> groupKeyParsers, List<AParser<? extends V>> groupValParsers,
+                       List<AParser<? extends K>> rawKeyParsers, List<AParser<? extends V>> rawValParsers) {
+        this.keyParsers = groupKeyParsers;
+        this.valParsers = groupValParsers;
     }
 
 
@@ -469,7 +470,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     public APair<K, V> parse(CharSequence cs) {
         PairParseState<K, V> parseState = new PairParseState<>(cs, keyParsers, valParsers);
         advance(parseState, cs);
-        return new APair<>(parseState.parsedKey, parseState.parsedVal);
+        return new APair<>((ANode<K>)parseState.parsedKey, (ANode<V>)parseState.parsedVal);
     }
 
     @Override

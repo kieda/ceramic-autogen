@@ -6,9 +6,9 @@ import java.util.List;
 
 public class APropertiesParser<X> implements AParser<List<ASection<X>>> {
     private final ASectionNameParser sectionNameParser;
-    private final List<AParser<X>> parsers;
+    private final List<AParser<? extends X>> parsers;
 
-    public APropertiesParser(ASectionNameParser sectionNameParser, List<AParser<X>> parsers) {
+    public APropertiesParser(ASectionNameParser sectionNameParser, List<AParser<? extends X>> parsers) {
         this.sectionNameParser = sectionNameParser;
         this.parsers = parsers;
     }
@@ -41,10 +41,10 @@ public class APropertiesParser<X> implements AParser<List<ASection<X>>> {
                 continue foundMatch;
             }
 
-            for (AParser<X> pp : parsers) {
+            for (AParser<? extends X> pp : parsers) {
                 int matchPos = pp.match(cs);
                 if (matchPos >= 0) {
-                    currentNodes.add(pp.parse(cs.subSequence(0, matchPos)));
+                    currentNodes.add((ANode<X>) pp.parse(cs.subSequence(0, matchPos)));
                     cs = cs.subSequence(matchPos, cs.length());
                     finalPos += matchPos;
                     continue foundMatch;
@@ -83,7 +83,7 @@ public class APropertiesParser<X> implements AParser<List<ASection<X>>> {
                 continue foundMatch;
             }
 
-            for (AParser<X> pp : parsers) {
+            for (AParser<? extends X> pp : parsers) {
                 int matchPos = pp.match(cs);
                 if (matchPos >= 0) {
                     cs = cs.subSequence(matchPos, cs.length());

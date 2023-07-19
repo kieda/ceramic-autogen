@@ -17,9 +17,9 @@ import java.util.function.Predicate;
 // Y[] getItems() : <Y extends ANode<X>>[] getValue()
 
 public class AListParser<X> implements AParser<ANode<X>[]>{
-    private final List<AParser<X>> parsers;
+    private final List<AParser<? extends X>> parsers;
 
-    public AListParser(List<AParser<X>> parsers) {
+    public AListParser(List<AParser<? extends X>> parsers) {
         // we can add 'this' with List<AParser<?, ?>>
         this.parsers = parsers;
     }
@@ -220,9 +220,9 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
         private int itemBegin = -1;
         private int itemEnd = -1;
         private final CharSequence base;
-        private final List<AParser<X>> parsers;
-        private final ANode<X>[] items;
-        private ListParseState(CharSequence base, ANode<X>[] items, List<AParser<X>> parsers) {
+        private final List<AParser<? extends X>> parsers;
+        private final ANode<? extends X>[] items;
+        private ListParseState(CharSequence base, ANode<X>[] items, List<AParser<? extends X>> parsers) {
             super(true); // only used internally. Thus we can just stop as usual
             this.base = base;
             this.parsers = parsers;
@@ -245,10 +245,10 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
                     SmallCharSequence.make() : // empty sequence
                     base.subSequence(itemBegin, itemEnd + 1); // end is exclusive, but our indexing is inclusive
             for(int parserIdx = 0; parserIdx < parsers.size(); parserIdx++) {
-                AParser<X> parser = parsers.get(parserIdx);
+                AParser<? extends X> parser = parsers.get(parserIdx);
                 int matchLen = parser.match(itemSequence);
                 if(matchLen >= 0) {
-                    ANode<X> node = parser.parse(itemSequence);
+                    ANode<? extends X> node = parser.parse(itemSequence);
                     items[getCount() - 1] = node;
                     break;
                 }

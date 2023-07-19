@@ -20,7 +20,6 @@ public class ASectionNameParser implements AParser<CharSequence> {
     //'io.hostilerobot.ceramicrelief.controller.parser.ASectionNameParser.SectionNameDAG1' is not within its bound; should extend
     // 'io.hostilerobot.sealedenum.SealedEnum<io.hostilerobot.ceramicrelief.controller.parser.ASectionNameParser.SectionNameDAG1>'
     private static sealed class SectionNameDAG extends SealedEnum<SectionNameDAG> implements DAGAdvancer<SectionNameMatch, SectionNameDAG> {
-        private static final SectionNameDAG INSTANCE = new SectionNameDAG();
         private final SectionNameDAG[] transitions;
         protected SectionNameDAG(SectionNameDAG... transitions) {
             super(SectionNameDAG.class);
@@ -34,25 +33,31 @@ public class ASectionNameParser implements AParser<CharSequence> {
     }
     private static final class COLON extends SectionNameDAG {
         private COLON() {super();}}
-    private static final SectionNameDAG COLON = SealedEnum.getSealedEnum(COLON.class);
-
     // name must be continuous, cannot have two parts broken by whitespace
     // we add this to the DAG to signify the property
     private static final class SPACE extends SectionNameDAG {
-        private SPACE() {super(COLON);}}
-    private static final SectionNameDAG SPACE = SealedEnum.getSealedEnum(SPACE.class);
+        private SPACE() {super(SealedEnum.getSealedEnum(COLON.class));}}
     private static final class NAME extends SectionNameDAG {
-        private NAME() {super(SPACE, COLON);}}
-    private static final SectionNameDAG NAME = SealedEnum.getSealedEnum(NAME.class);
+        private NAME() {super(SealedEnum.getSealedEnum(SPACE.class), SealedEnum.getSealedEnum(COLON.class));}}
 
     // first char has different rules compared to rest of the name
     // we add this to the DAG to signify this property and transition
     private static final class FIRST_CHAR extends SectionNameDAG {
-        private FIRST_CHAR() {super(SPACE, COLON, NAME);}}
-    private static final SectionNameDAG FIRST_CHAR = SealedEnum.getSealedEnum(FIRST_CHAR.class);
+        private FIRST_CHAR() {super(SealedEnum.getSealedEnum(SPACE.class), SealedEnum.getSealedEnum(COLON.class), SealedEnum.getSealedEnum(NAME.class));}}
     private static final class START extends SectionNameDAG {
-        private START() {super(FIRST_CHAR, COLON);}}
+        private START() {super(SealedEnum.getSealedEnum(FIRST_CHAR.class), SealedEnum.getSealedEnum(COLON.class));}}
+
+    private static final SectionNameDAG INSTANCE = new SectionNameDAG();
+    private static final SectionNameDAG COLON = SealedEnum.getSealedEnum(COLON.class);
+    private static final SectionNameDAG SPACE = SealedEnum.getSealedEnum(SPACE.class);
+    private static final SectionNameDAG NAME = SealedEnum.getSealedEnum(NAME.class);
+    private static final SectionNameDAG FIRST_CHAR = SealedEnum.getSealedEnum(FIRST_CHAR.class);
     private static final SectionNameDAG START = SealedEnum.getSealedEnum(START.class);
+
+    private static final boolean isValidFirstChar(char c) {
+        return !(c >= '0' && c <= '9') && !Character.isWhitespace(c)
+                && Arrays.binarySearch(AParser.RESERVED_CHARS, c) < 0;
+    }
 
     /* two ways of parsing the following:
      * abc : def : ghi :
@@ -91,14 +96,16 @@ public class ASectionNameParser implements AParser<CharSequence> {
         OTHER(c -> true) {
             @Override
             public void accept(char c, SectionNameMatch state) {
+                final SectionNameDAG startEnumState = state.getEnumState();
                 state.runTransition(enumState -> switch(enumState) {
                     // transition to FIRST_CHAR, then check the leading char
                     case START s -> {
-                        if((c >= '0' && c <= '9')
-                                || Arrays.binarySearch(AParser.RESERVED_CHARS, c) >= 0) {
+                        if(!isValidFirstChar(c)) {
                             state.stop();
                         } else {
                             state.encounterValueChar(c);
+                            state.transition(FIRST_CHAR);
+                            // transition to FIRST_CHAR then end this transition
                         }
                         yield null;
                     }
@@ -138,6 +145,7 @@ public class ASectionNameParser implements AParser<CharSequence> {
             return match.test(c, state);
         }
     }
+
     private static class SectionNameMatch extends DAGState<SectionNameMatch, SectionNameDAG> {
         SectionNameMatch() {
             super(START);
@@ -179,8 +187,8 @@ public class ASectionNameParser implements AParser<CharSequence> {
 
         protected void onNameEnd() {
             // might both be -1 if we didn't encounter any name values
-            CharSequence name = startSectionName == endSectionName ? SmallCharSequence.make()
-                : base.subSequence(startSectionName, endSectionName);
+            CharSequence name = startSectionName < 0 && endSectionName < 0 ? SmallCharSequence.make()
+                : base.subSequence(startSectionName, endSectionName + 1);
             parsed = new ASectionName(name);
         }
     }
@@ -221,12 +229,16 @@ public class ASectionNameParser implements AParser<CharSequence> {
     @Override
     public int match(CharSequence cs) {
         SectionNameMatch matchState = new SectionNameMatch();
+        // we must be directly looking at the first char of the name in order for this to be valid.
+        if(cs.isEmpty() || !(isValidFirstChar(cs.charAt(0)) || SectionNameCharType.END_NAME.test(cs.charAt(0), matchState))) {
+            return -1;
+        }
 
         CharAdvancer.runAdvancer(cs,
                 ChainedAdvancerState.chain(new ACommentParser.CommentState(), matchState),
                 SECTION_NAME_MATCH);
         if(matchState.getEnumState() == COLON) {
-            return matchState.getPos() + 1;
+            return matchState.getPos();
         }
         return -1;
     }

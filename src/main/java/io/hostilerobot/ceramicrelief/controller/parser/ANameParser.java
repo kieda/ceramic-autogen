@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 
 public class ANameParser implements AParser<CharSequence>{
     // don't allow 0-9 in first char, but allow in subsequent chars
+    // todo - the name permits whitespace at the moment. Fix this!
     public static Pattern NAME_PAT = Pattern.compile(
             "^(?:[^0-9" + AParser.RESERVED + "])(?:[^" + AParser.RESERVED + "]*)");
 

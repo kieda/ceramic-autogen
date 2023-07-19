@@ -69,22 +69,6 @@ class AQuotientParserTest {
         static int countWaysToIntern(String base) {
             return countWaysToIntern(base, LEADING | TRAILING);
         }
-
-        /**
-         * requirements: test case must be valid in terms of parsing, and cannot begin or end with a comment
-         */
-        public void addStrippedTest(String fraction, Fraction expected) {
-            String strippedLeading = fraction.stripLeading();
-            // if we have any leading whitespace, then we would expect match() to result in -1
-            // though we may be able to parse it successfully.
-            int expectedMatch;
-            if(strippedLeading.length() < fraction.length()) {
-                expectedMatch = -1;
-            } else {
-                expectedMatch = fraction.stripTrailing().length();
-            }
-            addTest(fraction, expected, expectedMatch);
-        }
     }
 
     /**

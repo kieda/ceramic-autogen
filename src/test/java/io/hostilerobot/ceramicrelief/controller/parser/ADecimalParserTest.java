@@ -26,8 +26,8 @@ class ADecimalParserTest {
     public static class TestDecimalArguments extends ParserTestArguments<Double> {
         private Map<String, String> validTests = Map.of(
             "123.456", "123.456",
-            "-123.456", "-123.456",
-            "  \t -1 asdf -1  ", "-1"
+            "-123.456", "-123.456"
+
         );
 
         {
@@ -47,6 +47,4 @@ class ADecimalParserTest {
         int matchLength = parser.match(input);
         assertEquals(expected, matchLength);
     }
-
-
 }

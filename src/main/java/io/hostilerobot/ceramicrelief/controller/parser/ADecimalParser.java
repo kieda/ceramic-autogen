@@ -14,6 +14,10 @@ public class ADecimalParser implements AParser<Double> {
         ADecimal dec = new ADecimal(val);
         return dec;
     }
+
+    // todo - permit whitespace after + and -
+    //       123 .123 vs 123.123 vs 123. 123- do not allow spacing before or after decimal
+    //       no not allow spacing before or after [eE]. Could get confused with name 123 e10 // is e10 a name or an exponent?
     private final static Pattern DOUBLE_PAT = Pattern.compile(
             "^[+-]?([0-9]*)(?:\\.([0-9]+))?([eE][0-9]+)?");
     @Override
