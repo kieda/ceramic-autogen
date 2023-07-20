@@ -58,6 +58,7 @@ class ACommentParserTest {
         // if output string is null, then
         AComment ac = parser.parse(input);
         assertEquals(expected, ac.getValue());
+        assertTrue(ac.ignore()); // comments should always be ignored
     }
 
     @ParameterizedTest

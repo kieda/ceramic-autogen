@@ -26,6 +26,12 @@ public class ACommentParser implements AParser<CharSequence> {
         return -1;
     }
 
+    @Override
+    public boolean ignore() {
+        // we ignore comments and don't add them to the AST
+        return true;
+    }
+
     enum CommentCharType implements CharAdvancer<CommentState> {
         COMMENT_BEGIN('#') {
             @Override

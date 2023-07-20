@@ -44,7 +44,11 @@ public class APropertiesParser<X> implements AParser<List<ASection<X>>> {
             for (AParser<? extends X> pp : parsers) {
                 int matchPos = pp.match(cs);
                 if (matchPos >= 0) {
-                    currentNodes.add((ANode<X>) pp.parse(cs.subSequence(0, matchPos)));
+                    ANode<? extends X> parsedNode = pp.parse(cs.subSequence(0, matchPos));
+                    if(!parsedNode.ignore()) {
+                        // don't add nodes for ignored nodes, but still skip forward
+                        currentNodes.add((ANode<X>) parsedNode);
+                    }
                     cs = cs.subSequence(matchPos, cs.length());
                     finalPos += matchPos;
                     continue foundMatch;

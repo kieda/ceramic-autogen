@@ -10,6 +10,10 @@ public interface AParser<T> {
     public ANode<T> parse(CharSequence cs);
     public int match(CharSequence cs); // -1 if no match, otherwise length of sequence match
 
+    public default boolean ignore() {
+        return false;
+    }
+
     public static int skipWhiteSpace(CharSequence cs, int pos) {
         while(pos < cs.length() && Character.isWhitespace(cs.charAt(pos))) {
             pos++;

@@ -244,8 +244,6 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
                 state.encounterValueChar(c);
             } else if(pairType == PairType.GROUP
                     && newDepth == pairType.getBaseDepth() - 1) {
-
-
                 if(state.getEnumState() == GROUP_SEP) {
                     // occurs in the following scenario:
                     // "{ K =  }"
@@ -302,12 +300,16 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         private int pairDepth;
 
         private final CharSequence base;
-        private final List<AParser<? extends V>> valParsers;
+        private final List<AParser<? extends V>> rawValParsers;
 
-        public PairMatchState(CharSequence base, List<AParser<? extends V>> valParsers) {
+        /**
+         * @param rawValParsers this is only used when parsing RAW types, in order for us to detect the end of the
+         *                      RAW sequence.
+         */
+        public PairMatchState(CharSequence base, List<AParser<? extends V>> rawValParsers) {
             super(START);
             this.base = base;
-            this.valParsers = valParsers;
+            this.rawValParsers = rawValParsers;
             pairDepth = 0;
         }
 
@@ -317,11 +319,23 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         private int findValueIndex() {
             if(valueIndex >= 0)
                 return valueIndex;
+            if(getEnumState().getType() != PairType.RAW)
+                throw new IllegalStateException("Should not be finding value index of non-RAW pairs");
+
+            // this should only occur when we're a RAW type, but
             int startIndex = getPos();
             CharSequence value = base.subSequence(startIndex, base.length());
-            for(AParser<? extends V> vParser : valParsers) {
+            for(AParser<? extends V> vParser : rawValParsers) {
                 int matchIdx = vParser.match(value);
                 if(matchIdx >= 0) {
+                    if(vParser.ignore()) {
+                        // ignore this node.
+                        // "key =# comment\nvalue" comment node will be detected before value!
+                        // "key =   value" whitespace node will be detected before value!
+                        // "key ="
+                    } else {
+
+                    }
                     valueIndex = matchIdx + startIndex;
                     return valueIndex;
                 }
@@ -367,10 +381,17 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         private int itemBegin = -1;
         private int itemEnd = -1;
 
-        private final List<AParser<? extends K>> keyParsers;
-        private PairParseState(CharSequence base, List<AParser<? extends K>> keyParsers, List<AParser<? extends V>> valParsers) {
-            super(base, valParsers);
-            this.keyParsers = keyParsers;
+        private final List<AParser<? extends K>> groupKeyParsers;
+        private final List<AParser<? extends V>> groupValParsers;
+        private final List<AParser<? extends K>> rawKeyParsers;
+
+        private PairParseState(CharSequence base,
+                               List<AParser<? extends K>> groupKeyParsers, List<AParser<? extends V>> groupValParsers,
+                               List<AParser<? extends K>> rawKeyParsers, List<AParser<? extends V>> rawValParsers) {
+            super(base, rawValParsers);
+            this.groupKeyParsers = groupKeyParsers;
+            this.groupValParsers = groupValParsers;
+            this.rawKeyParsers = rawKeyParsers;
         }
 
         @Override
@@ -390,6 +411,11 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         protected void parseKey() {
             CharSequence target = (itemBegin|itemEnd) < 0 ?
                     SmallCharSequence.make() : super.base.subSequence(itemBegin, itemEnd + 1);
+            List<AParser<? extends K>> keyParsers = switch(getEnumState().getType()) {
+                case GROUP -> groupKeyParsers;
+                case RAW ->  rawKeyParsers;
+                default -> throw new IllegalStateException("parsing Key while not in " + PairType.GROUP + " or " + PairType.RAW + " state.");
+            };
             for(AParser<? extends K> kP : keyParsers) {
                 int size = kP.match(target);
                 if(size >= 0) {
@@ -417,12 +443,18 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             CharSequence target = (itemBegin|itemEnd) < 0 ?
                     SmallCharSequence.make() : super.base.subSequence(start, end);
 
-            for(AParser<? extends V> vP : super.valParsers) {
+            List<AParser<? extends V>> valParsers = switch(getEnumState().getType()) {
+                case GROUP -> groupValParsers;
+                case RAW ->  super.rawValParsers;
+                default -> throw new IllegalStateException("parsing Val while not in " + PairType.GROUP + " or " + PairType.RAW + " state.");
+            };
+            for(AParser<? extends V> vP : valParsers) {
                 int size = vP.match(target);
                 if(size >= 0) {
                     if(size + start != end)
                         throw new AParserException();
                     parsedVal = vP.parse(target);
+
                     return;
                 }
             }
@@ -430,13 +462,17 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-    private final List<AParser<? extends K>> keyParsers;
-    private final List<AParser<? extends V>> valParsers;
+    private final List<AParser<? extends K>> groupKeyParsers;
+    private final List<AParser<? extends V>> groupValParsers;
+    private final List<AParser<? extends K>> rawKeyParsers;
+    private final List<AParser<? extends V>> rawValParsers;
 
     public APairParser(List<AParser<? extends K>> groupKeyParsers, List<AParser<? extends V>> groupValParsers,
                        List<AParser<? extends K>> rawKeyParsers, List<AParser<? extends V>> rawValParsers) {
-        this.keyParsers = groupKeyParsers;
-        this.valParsers = groupValParsers;
+        this.groupKeyParsers = groupKeyParsers;
+        this.groupValParsers = groupValParsers;
+        this.rawKeyParsers = rawKeyParsers;
+        this.rawValParsers = rawValParsers;
     }
 
 
@@ -468,14 +504,14 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
 
     @Override
     public APair<K, V> parse(CharSequence cs) {
-        PairParseState<K, V> parseState = new PairParseState<>(cs, keyParsers, valParsers);
+        PairParseState<K, V> parseState = new PairParseState<>(cs, groupKeyParsers, groupValParsers, rawKeyParsers, rawValParsers);
         advance(parseState, cs);
         return new APair<>((ANode<K>)parseState.parsedKey, (ANode<V>)parseState.parsedVal);
     }
 
     @Override
     public int match(CharSequence cs) {
-        PairMatchState<V> matchState = new PairMatchState<>(cs, valParsers);
+        PairMatchState<V> matchState = new PairMatchState<>(cs, rawValParsers);
         advance(matchState, cs);
         if(matchState.getEnumState() == END) {
             int valueIndex = matchState.valueIndex;

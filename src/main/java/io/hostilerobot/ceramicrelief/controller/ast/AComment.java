@@ -15,4 +15,9 @@ public class AComment implements ANode<CharSequence> {
     public int size() {
         return 0;
     }
+
+    @Override
+    public boolean ignore() {
+        return true;
+    }
 }

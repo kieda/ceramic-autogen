@@ -390,7 +390,7 @@ public class AQuotientParser implements AParser<Fraction> {
     private static QuotientState advance(QuotientState state, CharSequence cs) {
         // todo - just add a default method to advancer. Then we can override it for functionality
         //        like below
-        CharAdvancer.runAdvancer(cs, new ChainedAdvancerState<>(new ACommentParser.CommentState(), state), QUOTIENT_ADVANCER);
+            CharAdvancer.runAdvancer(cs, new ChainedAdvancerState<>(new ACommentParser.CommentState(), state), QUOTIENT_ADVANCER);
         state.runTransition(enumState -> switch (enumState) {
             // we ran through the entire sequence, We advance forward whatever states left.
             case START s -> FIRST_ITEM;

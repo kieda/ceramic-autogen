@@ -241,17 +241,27 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
         protected void onItemEnd() {
             // called when we encounter a ',' or the last parentheses in the list
             // itemBegin and itemEnd are both -1 in certain cases, e.g. (,)
-            CharSequence itemSequence = itemBegin == itemEnd ?
+            CharSequence itemSequence = (itemBegin|itemEnd) < 0 ?
                     SmallCharSequence.make() : // empty sequence
                     base.subSequence(itemBegin, itemEnd + 1); // end is exclusive, but our indexing is inclusive
-            for(int parserIdx = 0; parserIdx < parsers.size(); parserIdx++) {
+            for(int parserIdx = 0; parserIdx < parsers.size();) {
                 AParser<? extends X> parser = parsers.get(parserIdx);
                 int matchLen = parser.match(itemSequence);
                 if(matchLen >= 0) {
                     ANode<? extends X> node = parser.parse(itemSequence);
-                    items[getCount() - 1] = node;
-                    break;
+                    if(node.ignore()) {
+                        // if we are ignoring this node, we want to move the beginning forward by the chars occupied
+                        // by the ignored node and continue from 0
+                        itemSequence = itemSequence.subSequence(matchLen, itemSequence.length());
+                        parserIdx = 0;
+                        continue;
+                    } else {
+                        items[getCount() - 1] = node;
+                        break;
+                    }
                 }
+
+                parserIdx++;
             }
             itemBegin = itemEnd = -1;
         }
