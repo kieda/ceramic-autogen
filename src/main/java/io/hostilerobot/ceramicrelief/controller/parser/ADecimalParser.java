@@ -41,13 +41,13 @@ public class ADecimalParser implements AParser<Double> {
             return true;
         }}
     private final static class DECIMAL extends DecimalDAG{
-        private DECIMAL() {super(getSealedEnum(END.class));}}
+        private DECIMAL() {super(getSealedEnum(END.class), getSealedEnum(ERROR.class));}}
     // is in the form .123
     private final static class DECIMAL_SEP extends DecimalDAG{
-        private DECIMAL_SEP() {super(getSealedEnum(DECIMAL.class), getSealedEnum(END.class));}}
+        private DECIMAL_SEP() {super(getSealedEnum(DECIMAL.class), getSealedEnum(END.class), getSealedEnum(ERROR.class));}}
     // is in the form 1.123 or 1.
     private static final class INT_SEP extends DecimalDAG {
-        private INT_SEP() {super(getSealedEnum(DECIMAL.class), getSealedEnum(END.class));}}
+        private INT_SEP() {super(getSealedEnum(DECIMAL.class), getSealedEnum(END.class), getSealedEnum(ERROR.class));}}
     private static final class INT extends DecimalDAG{
         private INT() {super(getSealedEnum(INT_SEP.class), getSealedEnum(END.class), getSealedEnum(ERROR.class));}}
     private static final class SIGN extends DecimalDAG{
@@ -83,7 +83,6 @@ public class ADecimalParser implements AParser<Double> {
         SIGN( x -> x == '+' || x == '-') {
             @Override
             public void accept(char c, DecimalState state) {
-                state.sign = c == '-';
                 DecimalDAG startState = state.getEnumState();
                 if(state.runTransition(enumState -> switch (enumState) {
                     case START s -> VSIGN;
@@ -94,6 +93,8 @@ public class ADecimalParser implements AParser<Double> {
                     default -> VEND; // INT_SEP, INT, DECIMAL
                 }).isEndState()) {
                     state.stop();
+                } else {
+                    state.sign = c == '-';
                 }
             }
         },
@@ -122,6 +123,7 @@ public class ADecimalParser implements AParser<Double> {
                     // don't allow 123..3 (multiple decimals in a row)
                     case DECIMAL_SEP s -> startState == enumState ? VERROR : null;
                     case INT_SEP s -> startState == enumState ? VERROR : null;
+                    case DECIMAL d -> VERROR; // we're already in a decimal
                     // INT, DECIMAL, ERROR, END
                     default -> null;
                 }).isEndState()) {
@@ -199,7 +201,8 @@ public class ADecimalParser implements AParser<Double> {
         public double parseDouble(CharSequence base) {
             String doubleToParse = ((startDecimal|endDecimal) < 0) ? "" :
                     String.valueOf(base.subSequence(startDecimal, endDecimal + 1));
-            return Double.parseDouble(doubleToParse);
+            double val = Double.parseDouble(doubleToParse);
+            return sign ? -val : val;
         }
 
         @Override
