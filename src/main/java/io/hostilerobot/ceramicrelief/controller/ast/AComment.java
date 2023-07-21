@@ -20,4 +20,9 @@ public class AComment implements ANode<CharSequence> {
     public boolean ignore() {
         return true;
     }
+
+    @Override
+    public String toString() {
+        return "#" + comment + "\n";
+    }
 }

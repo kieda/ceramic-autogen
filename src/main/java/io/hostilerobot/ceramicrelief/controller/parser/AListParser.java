@@ -43,13 +43,15 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
                 state.pushDepth();
             }
         },
-        END_LIST(')', s -> s.getDepth() == 1) {
+        END_LIST(')', s ->
+                s.getDepth() == 1) {
             @Override
             public void accept(char c, ListMatchState state) {
                 // increase count if we have a value or encountered ','
                 // covers cases (), (asdf), and (,) to have 0, 1, and 2 values respectively
                 if(state.getCount() > 0 || state.hasValue())
                     state.increaseCount();
+                state.popDepth(); // depth -> 0
                 state.stop();
             }
         },
@@ -133,7 +135,7 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
                 return state.getDepth() == 1;
             }
         });
-        map.put(ListCharType.CLOSE_LIST, new CharAdvancer<>() {
+        map.put(ListCharType.END_LIST, new CharAdvancer<>() {
             @Override
             public void accept(char c, ListParseState state) {
                 state.onItemEnd();

@@ -2,6 +2,7 @@ package io.hostilerobot.ceramicrelief.controller.ast;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ANodeList<V> implements ANode<List<ANode<V>>> {
     private final List<ANode<V>> nodes;
@@ -25,5 +26,10 @@ public class ANodeList<V> implements ANode<List<ANode<V>>> {
     @Override
     public int size() {
         return nodes.size();
+    }
+
+    @Override
+    public String toString() {
+        return nodes.stream().map(String::valueOf).map(str -> str.indent(4)).collect(Collectors.joining("\n"));
     }
 }

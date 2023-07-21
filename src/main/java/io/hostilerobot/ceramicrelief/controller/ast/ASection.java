@@ -16,4 +16,9 @@ public class ASection<V> implements ANode<Pair<ASectionName, ANodeList<V>>> {
     public int size() {
         return section.getVal().size();
     }
+
+    @Override
+    public String toString() {
+        return section.getKey() + "\n" + getValue();
+    }
 }

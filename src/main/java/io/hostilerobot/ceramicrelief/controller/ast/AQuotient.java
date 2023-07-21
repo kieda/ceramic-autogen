@@ -21,4 +21,9 @@ public class AQuotient implements ANode<Fraction> {
     public int size() {
         return 1;
     }
+
+    @Override
+    public String toString() {
+        return String.valueOf(fraction);
+    }
 }

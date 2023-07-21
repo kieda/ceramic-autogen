@@ -18,4 +18,20 @@ public class APair<K, V> implements ANode<NodePair<K, V>>{
     public int size() {
         return 2;
     }
+
+    private boolean isPrimitive(ANode<?> node) {
+        return node instanceof ADecimal
+                || node instanceof AName
+                || node instanceof AQuotient
+                || node instanceof AWhitespace
+                || node instanceof AComment
+                || node instanceof AList;
+    }
+    @Override
+    public String toString() {
+        return (isPrimitive(pair.getKey()) && isPrimitive(pair.getVal())) ?
+                // both primitives: use a = b
+                // otherwise use {a = b} syntax
+                (pair.getKey() + " = " + pair.getVal()) : ("{" + pair.getKey() + " = " + pair.getVal() + "}");
+    }
 }

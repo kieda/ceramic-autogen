@@ -13,4 +13,9 @@ public class AName implements ANode<CharSequence> {
     public int size() {
         return 1;
     }
+
+    @Override
+    public String toString() {
+        return String.valueOf(name);
+    }
 }

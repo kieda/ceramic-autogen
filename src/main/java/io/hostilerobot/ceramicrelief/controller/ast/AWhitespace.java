@@ -22,4 +22,9 @@ public class AWhitespace implements ANode<Void>{
     public static AWhitespace getInstance() {
         return INSTANCE;
     }
+
+    @Override
+    public String toString() {
+        return " ";
+    }
 }
