@@ -1,5 +1,7 @@
 package io.hostilerobot.ceramicrelief.controller.ast;
 
+import java.util.Objects;
+
 public class AComment implements ANode<CharSequence> {
     private final CharSequence comment;
     public AComment(CharSequence comment) {
@@ -24,5 +26,18 @@ public class AComment implements ANode<CharSequence> {
     @Override
     public String toString() {
         return "#" + comment + "\n";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        AComment aComment = (AComment) o;
+        return Objects.equals(comment, aComment.comment);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(comment);
     }
 }

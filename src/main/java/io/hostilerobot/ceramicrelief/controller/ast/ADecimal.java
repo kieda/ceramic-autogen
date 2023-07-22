@@ -1,5 +1,7 @@
 package io.hostilerobot.ceramicrelief.controller.ast;
 
+import java.util.Objects;
+
 public class ADecimal implements ANode<Double> {
     private final double val;
     public ADecimal(double val) {
@@ -18,5 +20,18 @@ public class ADecimal implements ANode<Double> {
     @Override
     public String toString() {
         return String.valueOf(val);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ADecimal aDecimal = (ADecimal) o;
+        return Double.compare(aDecimal.val, val) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return Double.hashCode(val);
     }
 }

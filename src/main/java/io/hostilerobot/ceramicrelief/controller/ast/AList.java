@@ -30,4 +30,17 @@ public class AList<X> implements ANode<ANode<X>[]> {
     public String toString() {
         return Arrays.stream(items).map(String::valueOf).collect(Collectors.joining(",", "(", ")"));
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        AList<?> aList = (AList<?>) o;
+        return Arrays.equals(items, aList.items);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(items);
+    }
 }

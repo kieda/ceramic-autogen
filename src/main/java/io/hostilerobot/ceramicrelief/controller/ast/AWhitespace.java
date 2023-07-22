@@ -27,4 +27,9 @@ public class AWhitespace implements ANode<Void>{
     public String toString() {
         return " ";
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj == this;
+    }
 }

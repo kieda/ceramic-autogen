@@ -2,6 +2,7 @@ package io.hostilerobot.ceramicrelief.controller.ast;
 
 import java.util.AbstractMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class APair<K, V> implements ANode<NodePair<K, V>>{
     private final NodePair<K, V> pair;
@@ -33,5 +34,18 @@ public class APair<K, V> implements ANode<NodePair<K, V>>{
                 // both primitives: use a = b
                 // otherwise use {a = b} syntax
                 (pair.getKey() + " = " + pair.getVal()) : ("{" + pair.getKey() + " = " + pair.getVal() + "}");
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        APair<?, ?> aPair = (APair<?, ?>) o;
+        return Objects.equals(pair, aPair.pair);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(pair);
     }
 }

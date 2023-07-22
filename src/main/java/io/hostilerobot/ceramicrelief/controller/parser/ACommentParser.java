@@ -7,6 +7,11 @@ import io.hostilerobot.ceramicrelief.util.chars.CharBiPredicate;
 import java.util.EnumMap;
 
 public class ACommentParser implements AParser<CharSequence> {
+    private static final ACommentParser INSTANCE = new ACommentParser();
+    public static <T> AParser<T> getInstance() {
+        return (AParser<T>) INSTANCE;
+    }
+    ACommentParser() {}
     private static final CharAdvancer<CommentState> COMMENT_ADVANCER = new CompositeAdvancer<>(CommentCharType.values());
 
     @Override

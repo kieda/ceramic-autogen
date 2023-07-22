@@ -3,6 +3,13 @@ package io.hostilerobot.ceramicrelief.controller.parser;
 import io.hostilerobot.ceramicrelief.controller.ast.AWhitespace;
 
 public class AWhitespaceParser implements AParser<Void>{
+    private static final AWhitespaceParser INSTANCE = new AWhitespaceParser();
+    // since this is a void type and the parse results are ignored, we may use getInstance() to combine with parsers of any type
+    public static <T> AParser<T> getInstance() {
+        return (AParser<T>) INSTANCE;
+    }
+    AWhitespaceParser() {}
+
     @Override
     public AWhitespace parse(CharSequence cs) {
         return AWhitespace.getInstance();
