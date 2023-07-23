@@ -64,7 +64,7 @@ class AQuotientParserTest {
             int logPossibilities = base.length() - 1 + toadd;
             if(logPossibilities < 0)
                 return 0;
-            return 1 << (base.length() - 1 + toadd);
+            return 1 << logPossibilities;
         }
         static int countWaysToIntern(String base) {
             return countWaysToIntern(base, LEADING | TRAILING);

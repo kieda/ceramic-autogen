@@ -83,6 +83,11 @@ class AListParserTest {
         }
     }
 
+    // todo add more tests on exceptional cases
+    // todo add more tests on mixed types - e.g. pairs and sections
+    // todo add more tests with primitive types - e.g. doubles and names
+    // todo better exceptions - find codepoints where an error occurs and be able to pass this to the user.
+
     public static void assertDoubleListEquals(DoubleList expectedList, AList<?> actualList) {
         assertEquals(expectedList.size(), actualList.size(), "%s.size() != %s.size()".formatted(expectedList, actualList));
         ANode<?>[] actualItems = actualList.getValue();
