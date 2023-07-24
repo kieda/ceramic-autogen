@@ -70,9 +70,9 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
      * |KEY
      * START
      */
-    /*  '{' K '=' V '}'
-     * ^ ^  ^  ^  ^  ^ ^
-     * | |  |  |  |  | END
+    /*  '{' K '=' V '}'  '='
+     * ^ ^  ^  ^  ^  ^    ^
+     * | |  |  |  |  |    SEP (we may traverse back to SEP)
      * | |  |  |  |  GROUP_END
      * | |  |  |  GROUP_VAL
      * | |  |  GROUP_SEP
@@ -115,16 +115,32 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
     private static final class SEP<V> extends PairDAG<V> {
         protected SEP() { super(PairType.RAW, SealedEnum.getSealedEnum(VAL.class)); }
         @Override public void onTransition(PairMatchState<V> state) {
-            // we encountered '='
-            // parse and get the key
-            state.parseKey();
-            state.resetItem(); // reset the item to parse value
+            if(state.getEnumState() == GROUP_END) {
+                // we transition from GROUP_END to SEP
+                // meaning that we are in the form { ... } = ...
+                //                                         ^ currently here
+                // we set the current state's key to Pair(key, value), both of which are parsed.
+                if(state instanceof PairParseState parseState) {
+                    APair<? extends Object, V> newKey = new APair<>(parseState.parsedKey, (ANode<V>)parseState.parsedVal);
+                    parseState.parsedKey = newKey; // key is now the initial pair
+                    parseState.parsedVal = null;   // val is set to null, and will be parsed later
+                }
+                // we're not capturing a group anymore
+                state.resetEndGroupPos();
+            } else {
+                // we encountered '='
+                // parse and get the key
+                state.parseKey();
+            }
+            state.resetItem(); // reset the item so we can parse the value
         }}
     private static final class KEY<V> extends PairDAG<V> {
         protected KEY() {super(PairType.RAW, SealedEnum.getSealedEnum(SEP.class));}}
     // '{' K '=' V '}' with grouped association
     private static final class GROUP_END<V> extends PairDAG<V> {
-        protected GROUP_END() {super(PairType.GROUP, SealedEnum.getSealedEnum(END.class));}}
+        // we may traverse back to SEP if we have a pair in the form "{...} = ..."
+        // if we encounter anything else besides '=' (including end of file) after GROUP_END, then we end with our position being our last '}'
+        protected GROUP_END() {super(PairType.GROUP, SealedEnum.getSealedEnum(SEP.class), SealedEnum.getSealedEnum(END.class));}}
     private static final class GROUP_VAL<V> extends PairDAG<V> {
         protected GROUP_VAL() {super(PairType.GROUP, SealedEnum.getSealedEnum(GROUP_END.class));}}
     private static final class GROUP_SEP<V> extends PairDAG<V> {
@@ -188,8 +204,10 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             switch (pairType) {
                 case GROUP:
                 case RAW:
-                    if(pairType.getBaseDepth() == state.getPairDepth()) {
-                        state.encounterValueChar(c);
+                    if((state.getEnumState() == GROUP_END && pairType.getBaseDepth() == state.getPairDepth() + 1) ||
+                            pairType.getBaseDepth() == state.getPairDepth()) {
+                        // act like we're encountering another char
+                        SealedEnum.getSealedEnum(OTHER.class).accept(c, state);
                     }
                     break;
                 case UNKNOWN:
@@ -213,14 +231,16 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             // e.g. "=123"
             case START<V> s -> KEY;
             case KEY<V> s -> SEP;
-            // GROUP_SEP and SEP end the transition chain, so all chains will terminate
-            default -> null;
+            case GROUP_END<V> g -> SEP; // we have { ... } = ...
+            // SEP ends the transition chain, so all chains will terminate
+            default -> null; // todo - what about SEP followed by SEP, e.g. a = = b?
         };
         @Override
         public void accept(char c, PairMatchState<V> state) {
             PairType pairType = state.getEnumState().getType();
 
-            if(pairType.getBaseDepth() == state.getPairDepth()) {
+            if((state.getEnumState() == GROUP_END && pairType.getBaseDepth() == state.getPairDepth() + 1) ||
+                    pairType.getBaseDepth() == state.getPairDepth()) {
                 // transition to next item
                 state.runTransition(transitions);
             }
@@ -245,10 +265,14 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
                     // since we never find a valueChar for V, we have an incomplete transition
                     state.transition(GROUP_VAL);
                 }
-                // transition to end and stop
+                // transition to GROUP_END
+                // however, we don't want to stop just yet, in case this group pair is actually a key for another pair
+                // e.g.
+                //  { ... } = 123
+                //        ^ we are here.
                 state.transition(GROUP_END);
-                state.transition(END);
-                state.stop();
+                state.captureEndGroupPos(); // this is the position for the end of the group
+                state.parseValue(); // parse the value of v for { k = v }
             } else if(newDepth < 0) {
                 throw new AParserException("mismatched pair parentheses");
             }
@@ -272,12 +296,19 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             case SEP<V> s -> VAL;
             case GROUP_START<V> s -> GROUP_KEY;
             case GROUP_SEP<V> s -> GROUP_VAL;
+            case GROUP_END<V> s -> END;
             default -> null;
         };
 
         @Override
         public void accept(char c, PairMatchState<V> state) {
             state.runTransition(transitions);
+            if(state.getEnumState() == END) {
+                if(!state.isStopped())
+                    state.stop();
+                return;
+            }
+
             PairType pairType = state.getEnumState().getType();
             final int baseDepth = pairType == PairType.UNKNOWN ? 0 :
                     pairType.getBaseDepth();
@@ -291,7 +322,19 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         // look forward to find the end position of the value
         // if we are using GROUP type then this will remain -1
         private int valueIndex = -1;
+        private int endGroupPos = -1;
+            // the end of this pair when we're in group form { ... }
+            // note that this might not be the actual end of the pair if we have { ... } = ...
 
+        private void resetEndGroupPos() {
+            endGroupPos = -1;
+        }
+        private void captureEndGroupPos() {
+            endGroupPos = getPos() + 1;
+        }
+        private int getEndPos() {
+            return Math.max(endGroupPos, valueIndex);
+        }
         private int pairDepth;
 
         private final CharSequence base;
@@ -499,6 +542,9 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             state.transition(VAL);
             state.transition(END);
             state.stop();
+        } if(!state.isStopped() && state.getEnumState() == GROUP_END) {
+            state.transition(END);
+            state.stop();
         }
         return state;
     }
@@ -526,20 +572,6 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         //          b.) the end of the chars.
         // if we reach a.) we can easily get the bounds of the key. We find the bounds of the val by parsing next
         // if we either don't have a complete match on key or value, we try and parse again but using "{" and "}" as beginning and end
-
-        /*
-         * alternative:
-         *   if we were in a GROUP context, and we match with another '=' sign -- todo add GROUP_STOP state, which may transition to an equals
-         *   int beginVal = firstItemAfterCharPoint('=');
-         *   then valChars = base.subsequence(, base.length())
-         *   and newValLength = matchNextItem(valChars)
-         *   and newVal = parseNextItem(valChars.subsequence(0, newValLength))
-         *   then return Pair(oldPair, newVal) // oldPair is actually a key
-         *   and return match = beginVal + newValLength
-         *
-         *   {abc = def} = {abc = def} = {abc = def}
-         */
-
         PairParseState<K, V> parseState = new PairParseState<>(cs, groupKeyParsers, groupValParsers, rawKeyParsers, rawValParsers);
         advance(parseState, cs);
         return new APair<>((ANode<K>)parseState.parsedKey, (ANode<V>)parseState.parsedVal);
@@ -547,15 +579,10 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
 
     @Override
     public int match(CharSequence cs) {
-
-
         PairMatchState<V> matchState = new PairMatchState<>(cs, rawValParsers);
         advance(matchState, cs);
         if(matchState.getEnumState() == END) {
-            int valueIndex = matchState.valueIndex;
-            // return the valueIndex if we're a RAW pair, otherwise we know pos ends at '}'
-            // and this is included in our match.
-            return (valueIndex >= 0 ? valueIndex : matchState.getPos());
+            return matchState.getEndPos();
         }
         return -1;
     }

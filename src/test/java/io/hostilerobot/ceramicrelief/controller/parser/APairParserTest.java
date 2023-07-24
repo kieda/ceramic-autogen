@@ -92,6 +92,7 @@ class APairParserTest {
     private record VName(String name) implements PairTree{}
     private record VDecimal(double val) implements PairTree{}
     private record VPair(PairTree first, PairTree second) implements PairTree{}
+    private record VList(PairTree... items) implements PairTree{};
     private static VName of(String name){
         return new VName(name);
     }
@@ -100,6 +101,9 @@ class APairParserTest {
     }
     private static VPair of(PairTree first, PairTree second) {
         return new VPair(first, second);
+    }
+    private static VList ofl(PairTree... items) {
+        return new VList(items);
     }
 
 
@@ -113,10 +117,21 @@ class APairParserTest {
             addInternTests(this,
                     of(of(of(of("a"), of("b")), of(123.0)), of("c")),
                     "{", "{", "a", "=", "b", "}", "=", "123", "}", "=", "c");
+
+            addStrippedTest("{{{a=b}=def}=min}=lol",
+                    of(of(of(of(of("a"), of("b")), of("def")), of("min")), of("lol")) );
+            addTest("{{{a=b}=def}=min}=lol lol",
+                    of(of(of(of(of("a"), of("b")), of("def")), of("min")), of("lol")), "{{{a=b}=def}=min}=lol".length() );
+            addStrippedTest("lol={abc=123}",
+                    of(of("lol"), of(of("abc"), of(123.0))));
+            addStrippedTest("{lol=3.14}={abc=123}",
+                    of(of(of("lol"), of(3.14)), of(of("abc"), of(123.0))));
+            addTest("lol={abc=123} haha #comment",
+                    of(of("lol"), of(of("abc"), of(123.0))), "lol={abc=123}".length());
         }
     }
 
-    private static APairParser<Object, Object> NAMES_DECIMALS_AND_PAIRS;
+    private final static APairParser<Object, Object> NAMES_DECIMALS_AND_PAIRS;
     static {
         List<AParser<? extends Object>> parsers = new ArrayList<>();
         parsers.add(null);
@@ -126,8 +141,7 @@ class APairParserTest {
         parsers.set(0, NAMES_DECIMALS_AND_PAIRS);
     }
 
-
-    private void assertTreeEquals(PairTree expected, Object actual) {
+    private void assertTreeEquals(PairTree expected, ANode actual) {
         assertNotNull(actual);
         switch(expected) {
             case VDecimal(double expectedVal) -> {
@@ -147,13 +161,56 @@ class APairParserTest {
                 assertTreeEquals(expectedKey, actualPair.getValue().getKey());
                 assertTreeEquals(expectedVal, actualPair.getValue().getVal());
             }
+            case VList(PairTree[] items) -> {
+                assertEquals(AList.class, actual.getClass());
+                AList<Object> actualList = (AList<Object>) actual;
+                assertNotNull(actualList.getValue());
+                assertEquals(items.length, actualList.size());
+                for (int i = 0; i < items.length; i++) {
+                    assertTreeEquals(items[i], actualList.get(i));
+                }
+            }
         }
     }
     @ParameterizedTest
     @ArgumentsSource(NestedPairArguments.class)
     public void testPairs(String input, PairTree expected, int expectedMatch) {
-        System.out.println(input + " " + input.length());
         assertEquals(expectedMatch, NAMES_DECIMALS_AND_PAIRS.match(input));
         assertTreeEquals(expected, NAMES_DECIMALS_AND_PAIRS.parse(input));
     }
+
+    private static final APairParser<Object, Object> PAIRS_AND_LISTS;
+    static {
+        List<AParser<? extends Object>> parsers = new ArrayList<>();
+        parsers.add(null); // will be pairs
+        parsers.add(null); // will be lists
+        parsers.add(NAME_PARSER);
+        parsers.add(DECIMAL_PARSER);
+        AListParser<Object> listParser = new AListParser<>(parsers);
+        parsers.set(1, listParser);
+        PAIRS_AND_LISTS = new APairParser<>(parsers, parsers, parsers, parsers);
+        parsers.set(0, PAIRS_AND_LISTS);
+    }
+
+    static class NestedListArguments extends ParserTestArguments<PairTree> {
+        {
+            addStrippedTest("(a = b, c = d) = (e = f)",
+                    of(
+                        ofl(
+                            of(of("a"), of("b")),
+                            of(of("c"), of("d"))
+                        ),
+                        ofl(
+                            of(of("e"), of("f"))))
+                    );
+        }
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(NestedListArguments.class)
+    public void testNestedList(String input, PairTree expected, int expectedMatch) {
+//        assertEquals(expectedMatch, NAMES_DECIMALS_AND_PAIRS.match(input));
+        assertTreeEquals(expected, NAMES_DECIMALS_AND_PAIRS.parse(input));
+    }
+
 }
