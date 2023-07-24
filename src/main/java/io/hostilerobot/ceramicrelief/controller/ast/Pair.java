@@ -29,4 +29,9 @@ public class Pair<K, V> {
     public int hashCode() {
         return Objects.hash(key, val);
     }
+
+    @Override
+    public String toString() {
+        return "{%s=%s}".formatted(key, val);
+    }
 }

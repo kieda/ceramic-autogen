@@ -30,6 +30,6 @@ public class ANodeList<V> implements ANode<List<ANode<V>>> {
 
     @Override
     public String toString() {
-        return nodes.stream().map(String::valueOf).map(str -> str.indent(4)).collect(Collectors.joining("\n"));
+        return nodes.stream().map(String::valueOf).collect(Collectors.joining("\n")).indent(4).stripTrailing();
     }
 }

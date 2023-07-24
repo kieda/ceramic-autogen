@@ -162,7 +162,7 @@ public class AQuotientParser implements AParser<Fraction> {
 
         private int parseCurrentInt() {
             if((startIdx|endIdx) < 0)
-                throw new AParserException();
+                throw new IllegalStateException();
             int result = Integer.parseInt(baseSequence, startIdx, endIdx + 1, RADIX);
             if(sign)
                 return -result;

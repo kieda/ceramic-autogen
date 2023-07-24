@@ -12,9 +12,7 @@ public class DAGState<S extends DAGState<S, X>, X extends SealedEnum<X> & DAGAdv
     }
     public void transition(X next) {
         if(!enumState.isValidTransition(next))
-            // todo make this an illegalstateexception
-            //   parser exception should only be thrown on invalid user input
-            throw new AParserException("invalid transition: " + enumState + " -> " + next);
+            throw new IllegalStateException("invalid transition: " + enumState + " -> " + next);
         next.onTransition((S)this);
         enumState = next;
     }

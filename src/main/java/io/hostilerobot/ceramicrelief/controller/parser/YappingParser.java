@@ -53,6 +53,7 @@ public class YappingParser implements AParser<List<ASection<? extends Object>>> 
         BASE_PARSE_TYPES.add(NAMES);     // then names
         BASE_PARSE_TYPES.add(ACommentParser.getInstance());  // then comments
         BASE_PARSE_TYPES.add(AWhitespaceParser.getInstance()); // finally whitespace
+        // todo - remove whitespace parsing except on properties. Other items have their own rules for whitespace.
     }
     AListParser<? extends Object> LISTS = new AListParser<>(BASE_PARSE_TYPES);
     {

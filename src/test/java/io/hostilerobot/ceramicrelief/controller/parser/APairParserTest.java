@@ -128,6 +128,12 @@ class APairParserTest {
                     of(of(of("lol"), of(3.14)), of(of("abc"), of(123.0))));
             addTest("lol={abc=123} haha #comment",
                     of(of("lol"), of(of("abc"), of(123.0))), "lol={abc=123}".length());
+            addTest("lol = {abc=123} haha = wow",
+                    of(of("lol"), of(of("abc"), of(123.0))), "lol = {abc=123}".length());
+            addTest("lol = 123 haha = wow",
+                    of(of("lol"), of(123.0)), "lol = 123".length());
+            addTest("   lol = 123 haha = wow",
+                    of(of("lol"), of(123.0)), "   lol = 123".length());
         }
     }
 
@@ -176,7 +182,8 @@ class APairParserTest {
     @ArgumentsSource(NestedPairArguments.class)
     public void testPairs(String input, PairTree expected, int expectedMatch) {
         assertEquals(expectedMatch, NAMES_DECIMALS_AND_PAIRS.match(input));
-        assertTreeEquals(expected, NAMES_DECIMALS_AND_PAIRS.parse(input));
+        if(expectedMatch >= 0)
+            assertTreeEquals(expected, NAMES_DECIMALS_AND_PAIRS.parse(input));
     }
 
     private static final APairParser<Object, Object> PAIRS_AND_LISTS;
@@ -194,6 +201,11 @@ class APairParserTest {
 
     static class NestedListArguments extends ParserTestArguments<PairTree> {
         {
+            addStrippedTest("(a) = (123 = 123, b)",
+                    of(
+                        ofl(of("a")),
+                        ofl(of(of(123.0), of(123.0)), of("b"))
+                    ));
             addStrippedTest("(a = b, c = d) = (e = f)",
                     of(
                         ofl(
@@ -201,16 +213,33 @@ class APairParserTest {
                             of(of("c"), of("d"))
                         ),
                         ofl(
-                            of(of("e"), of("f"))))
-                    );
+                            of(of("e"), of("f")))));
+            addStrippedTest("(m, n) = 1",
+                    of(ofl(of("m"), of("n")), of(1.0)) );
+            addStrippedTest("(m = n) = 1",
+                    of(ofl(of(of("m"), of("n"))), of(1.0)) );
+            addStrippedTest("1 = (m, n)",
+                    of(of(1.0), ofl(of("m"), of("n"))) );
+            addStrippedTest("1 = (m= n)",
+                    of(of(1.0), ofl(of(of("m"), of("n")))));
+            addStrippedTest("(a = (h, i), c = (j,k)) = (l, {m = (n, 0)} = 123)",
+                    of(
+                        ofl(
+                                of(of("a"), ofl(of("h"), of("i"))),
+                                of(of("c"), ofl(of("j"), of("k")))),
+                        ofl(of("l"),
+                                of(of(of("m"),
+                                        ofl(of("n"), of(0.0))),
+                                    of(123.0)))
+                    ));
         }
     }
 
     @ParameterizedTest
     @ArgumentsSource(NestedListArguments.class)
     public void testNestedList(String input, PairTree expected, int expectedMatch) {
-//        assertEquals(expectedMatch, NAMES_DECIMALS_AND_PAIRS.match(input));
-        assertTreeEquals(expected, NAMES_DECIMALS_AND_PAIRS.parse(input));
+        assertEquals(expectedMatch, PAIRS_AND_LISTS.match(input));
+        assertTreeEquals(expected, PAIRS_AND_LISTS.parse(input));
     }
 
 }

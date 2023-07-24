@@ -43,8 +43,7 @@ public class AListParser<X> implements AParser<ANode<X>[]>{
                 state.pushDepth();
             }
         },
-        END_LIST(')', s ->
-                s.getDepth() == 1) {
+        END_LIST(')', s -> s.getDepth() == 1) {
             @Override
             public void accept(char c, ListMatchState state) {
                 // increase count if we have a value or encountered ','

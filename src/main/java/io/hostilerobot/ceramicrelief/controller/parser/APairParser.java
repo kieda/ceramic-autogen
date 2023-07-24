@@ -81,10 +81,10 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
      * START
      */
 
-    private static sealed class PairDAG<V> extends SealedEnum<PairDAG<V>> implements DAGAdvancer<PairMatchState<V>, PairDAG<V>> {
-        private final PairDAG<V>[] transitions;
+    private static sealed class PairDAG<K, V> extends SealedEnum<PairDAG<K, V>> implements DAGAdvancer<PairMatchState<K, V>, PairDAG<K, V>> {
+        private final PairDAG<K, V>[] transitions;
         private final PairType type;
-        protected PairDAG(PairType type, PairDAG<V>... transitions) {
+        protected PairDAG(PairType type, PairDAG<K, V>... transitions) {
             super(PairDAG.class);
             this.type = type;
             this.transitions = transitions;
@@ -94,33 +94,33 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             return type;
         }
 
-        @Override public PairDAG<V>[] getTransitions() {
+        @Override public PairDAG<K, V>[] getTransitions() {
             return transitions;
         }
     }
-    private static final class END<V> extends PairDAG<V> {
+    private static final class END<K, V> extends PairDAG<K, V> {
         protected END() { super(PairType.DONE); }
-        @Override public void onTransition(PairMatchState<V> state) {
+        @Override public void onTransition(PairMatchState<K, V> state) {
             // parse the val
             state.parseValue();
         }}
     // K '=' V without association
-    private static final class VAL<V> extends PairDAG<V> {
+    private static final class VAL<K, V> extends PairDAG<K, V> {
         protected VAL() { super(PairType.RAW, SealedEnum.getSealedEnum(END.class)); }
-        @Override public void onTransition(PairMatchState<V> state) {
+        @Override public void onTransition(PairMatchState<K, V> state) {
             // we have encountered the first char of V
             // we look forward and find the value length
             state.findValueIndex();
         }}
-    private static final class SEP<V> extends PairDAG<V> {
+    private static final class SEP<K, V> extends PairDAG<K, V> {
         protected SEP() { super(PairType.RAW, SealedEnum.getSealedEnum(VAL.class)); }
-        @Override public void onTransition(PairMatchState<V> state) {
+        @Override public void onTransition(PairMatchState<K, V> state) {
             if(state.getEnumState() == GROUP_END) {
                 // we transition from GROUP_END to SEP
                 // meaning that we are in the form { ... } = ...
                 //                                         ^ currently here
                 // we set the current state's key to Pair(key, value), both of which are parsed.
-                if(state instanceof PairParseState parseState) {
+                if(state instanceof APairParser.PairParseState parseState) {
                     APair<? extends Object, V> newKey = new APair<>(parseState.parsedKey, (ANode<V>)parseState.parsedVal);
                     parseState.parsedKey = newKey; // key is now the initial pair
                     parseState.parsedVal = null;   // val is set to null, and will be parsed later
@@ -134,28 +134,28 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             }
             state.resetItem(); // reset the item so we can parse the value
         }}
-    private static final class KEY<V> extends PairDAG<V> {
+    private static final class KEY<K, V> extends PairDAG<K, V> {
         protected KEY() {super(PairType.RAW, SealedEnum.getSealedEnum(SEP.class));}}
     // '{' K '=' V '}' with grouped association
-    private static final class GROUP_END<V> extends PairDAG<V> {
+    private static final class GROUP_END<K, V> extends PairDAG<K, V> {
         // we may traverse back to SEP if we have a pair in the form "{...} = ..."
         // if we encounter anything else besides '=' (including end of file) after GROUP_END, then we end with our position being our last '}'
         protected GROUP_END() {super(PairType.GROUP, SealedEnum.getSealedEnum(SEP.class), SealedEnum.getSealedEnum(END.class));}}
-    private static final class GROUP_VAL<V> extends PairDAG<V> {
+    private static final class GROUP_VAL<K, V> extends PairDAG<K, V> {
         protected GROUP_VAL() {super(PairType.GROUP, SealedEnum.getSealedEnum(GROUP_END.class));}}
-    private static final class GROUP_SEP<V> extends PairDAG<V> {
+    private static final class GROUP_SEP<K, V> extends PairDAG<K, V> {
         protected GROUP_SEP() {super(PairType.GROUP, SealedEnum.getSealedEnum(GROUP_VAL.class));}
-        @Override public void onTransition(PairMatchState<V> state) {
+        @Override public void onTransition(PairMatchState<K, V> state) {
             // get the key
             state.parseKey();
             state.resetItem(); // reset the item
         }}
-    private static final class GROUP_KEY<V> extends PairDAG<V> {
+    private static final class GROUP_KEY<K, V> extends PairDAG<K, V> {
         protected GROUP_KEY() {super(PairType.GROUP, SealedEnum.getSealedEnum(GROUP_SEP.class));}}
-    private static final class GROUP_START<V> extends PairDAG<V> {
+    private static final class GROUP_START<K, V> extends PairDAG<K, V> {
         protected GROUP_START() {super(PairType.GROUP, SealedEnum.getSealedEnum(GROUP_KEY.class));}}
     // starting point
-    private static final class START<V> extends PairDAG<V> {
+    private static final class START<K, V> extends PairDAG<K, V> {
         protected START() {super(PairType.UNKNOWN, SealedEnum.getSealedEnum(GROUP_START.class), SealedEnum.getSealedEnum(KEY.class));}}
 
     public static final PairDAG INSTANCE = new PairDAG(null);
@@ -172,10 +172,10 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
 
     // note that we don't need to do the same thing for pairs in lists, since lists are always delimited with ( and )
 
-    private static sealed class PairCharType<V> extends SealedEnum<PairCharType<V>> implements CharAdvancer<PairMatchState<V>> {
+    private static sealed class PairCharType<K, V> extends SealedEnum<PairCharType<K, V>> implements CharAdvancer<PairMatchState<K, V>> {
         public static final PairCharType INSTANCE = new PairCharType(c -> false);
-        private final CharBiPredicate<PairMatchState<V>> match;
-        private PairCharType(CharBiPredicate<PairMatchState<V>> match) {
+        private final CharBiPredicate<PairMatchState<K, V>> match;
+        private PairCharType(CharBiPredicate<PairMatchState<K, V>> match) {
             super(PairCharType.class);
             this.match = match;
         }
@@ -187,19 +187,19 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             this(CharBiPredicate.from(flag));
         }
         @Override
-        public boolean test(char c, PairMatchState<V> state) {
+        public boolean test(char c, PairMatchState<K, V> state) {
             return match.test(c, state);
         }
         @Override
-        public void accept(char c, PairMatchState<V> state) {
+        public void accept(char c, PairMatchState<K, V> state) {
             throw new UnsupportedOperationException();
         }
     }
 
-    private static final class OPEN_PAIR<V> extends PairCharType<V> {
+    private static final class OPEN_PAIR<K, V> extends PairCharType<K, V> {
         OPEN_PAIR() {super('{');}
         @Override
-        public void accept(char c, PairMatchState<V> state) {
+        public void accept(char c, PairMatchState<K, V> state) {
             PairType pairType = state.getEnumState().getType();
             switch (pairType) {
                 case GROUP:
@@ -220,23 +220,23 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             state.pushPairDepth();
         }
     }
-    private final static class SEP_PAIR<V> extends PairCharType<V> {
+    private final static class SEP_PAIR<K, V> extends PairCharType<K, V> {
         SEP_PAIR() { super('='); }
-        private final UnaryOperator<PairDAG<V>> transitions = enumState -> switch(enumState) {
-            case GROUP_START<V> s -> GROUP_KEY;
+        private final UnaryOperator<PairDAG<K, V>> transitions = enumState -> switch(enumState) {
+            case GROUP_START<K, V> s -> GROUP_KEY;
             // empty key
             // e.g. "{  =123}"
-            case GROUP_KEY<V> s -> GROUP_SEP;
+            case GROUP_KEY<K, V> s -> GROUP_SEP;
             // empty key
             // e.g. "=123"
-            case START<V> s -> KEY;
-            case KEY<V> s -> SEP;
-            case GROUP_END<V> g -> SEP; // we have { ... } = ...
+            case START<K, V> s -> KEY;
+            case KEY<K, V> s -> SEP;
+            case GROUP_END<K, V> g -> SEP; // we have { ... } = ...
             // SEP ends the transition chain, so all chains will terminate
             default -> null; // todo - what about SEP followed by SEP, e.g. a = = b?
         };
         @Override
-        public void accept(char c, PairMatchState<V> state) {
+        public void accept(char c, PairMatchState<K, V> state) {
             PairType pairType = state.getEnumState().getType();
 
             if((state.getEnumState() == GROUP_END && pairType.getBaseDepth() == state.getPairDepth() + 1) ||
@@ -247,11 +247,11 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-    private final static class CLOSE_PAIR<V> extends PairCharType<V> {
+    private final static class CLOSE_PAIR<K, V> extends PairCharType<K, V> {
         CLOSE_PAIR() {super('}');}
 
         @Override
-        public void accept(char c, PairMatchState<V> state) {
+        public void accept(char c, PairMatchState<K, V> state) {
             int newDepth = state.popPairDepth();
             PairType pairType = state.getEnumState().getType();
             if(newDepth == pairType.getBaseDepth()) {
@@ -278,30 +278,30 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             }
         }
     }
-    private final static class WHITESPACE<V> extends PairCharType<V>{
+    private final static class WHITESPACE<K, V> extends PairCharType<K, V>{
         WHITESPACE() {super(Character::isWhitespace);}
 
         @Override
-        public void accept(char c, PairMatchState<V> state) {
+        public void accept(char c, PairMatchState<K, V> state) {
             // do nothing
         }
     }
-    private final static class OTHER<V> extends PairCharType<V>{
+    private final static class OTHER<K, V> extends PairCharType<K, V>{
         OTHER() {super(c -> true);}
 
-        private final UnaryOperator<PairDAG<V>> transitions = enumState -> switch(enumState) {
+        private final UnaryOperator<PairDAG<K, V>> transitions = enumState -> switch(enumState) {
             // note that each result will be mapped to a value not in the matrix
             // so it will map to null after one transition.
-            case START<V> s -> KEY;
-            case SEP<V> s -> VAL;
-            case GROUP_START<V> s -> GROUP_KEY;
-            case GROUP_SEP<V> s -> GROUP_VAL;
-            case GROUP_END<V> s -> END;
+            case START<K, V> s -> KEY;
+            case SEP<K, V> s -> VAL;
+            case GROUP_START<K, V> s -> GROUP_KEY;
+            case GROUP_SEP<K, V> s -> GROUP_VAL;
+            case GROUP_END<K, V> s -> END;
             default -> null;
         };
 
         @Override
-        public void accept(char c, PairMatchState<V> state) {
+        public void accept(char c, PairMatchState<K, V> state) {
             state.runTransition(transitions);
             if(state.getEnumState() == END) {
                 if(!state.isStopped())
@@ -318,13 +318,13 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-    private static class PairMatchState<V> extends DAGState<PairMatchState<V>, PairDAG<V>> {
+    private static class PairMatchState<K, V> extends DAGState<PairMatchState<K, V>, PairDAG<K, V>> {
         // look forward to find the end position of the value
         // if we are using GROUP type then this will remain -1
         private int valueIndex = -1;
         private int endGroupPos = -1;
-            // the end of this pair when we're in group form { ... }
-            // note that this might not be the actual end of the pair if we have { ... } = ...
+        // the end of this pair when we're in group form { ... }
+        // note that this might not be the actual end of the pair if we have { ... } = ...
 
         private void resetEndGroupPos() {
             endGroupPos = -1;
@@ -340,15 +340,52 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         private final CharSequence base;
         private final List<AParser<? extends V>> rawValParsers;
 
-        /**
-         * @param rawValParsers this is only used when parsing RAW types, in order for us to detect the end of the
-         *                      RAW sequence.
-         */
-        public PairMatchState(CharSequence base, List<AParser<? extends V>> rawValParsers) {
+        private int itemBegin = -1;
+        private int itemEnd = -1;
+
+        private final List<AParser<? extends K>> groupKeyParsers;
+        private final List<AParser<? extends V>> groupValParsers;
+        private final List<AParser<? extends K>> rawKeyParsers;
+
+        private PairMatchState(CharSequence base,
+                               List<AParser<? extends K>> groupKeyParsers, List<AParser<? extends V>> groupValParsers,
+                               List<AParser<? extends K>> rawKeyParsers, List<AParser<? extends V>> rawValParsers) {
             super(START);
             this.base = base;
-            this.rawValParsers = rawValParsers;
             pairDepth = 0;
+            this.groupKeyParsers = groupKeyParsers;
+            this.groupValParsers = groupValParsers;
+            this.rawKeyParsers = rawKeyParsers;
+            this.rawValParsers = rawValParsers;
+        }
+
+        @Override
+        protected void encounterValueChar(char c) { // match
+            super.encounterValueChar(c);
+
+            if(itemBegin >= 0) {
+                itemEnd = getPos();
+            } else{
+                itemEnd = itemBegin = getPos();
+            }
+
+            if(getEnumState() == VAL &&
+                    (getValueIndex() >= 0 && (getPos() + 1) >= getValueIndex())) {
+                // we reached the last index of the value.
+                // transition to the end and stop
+                transition(END);
+                stop();
+            }
+        }
+
+        protected void resetItem() {
+            itemBegin = itemEnd = -1;
+        }
+
+        private void noMatch() {
+            valueIndex = -1;
+            endGroupPos = -1;
+            stop();
         }
 
         /**
@@ -366,33 +403,63 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             for(AParser<? extends V> vParser : rawValParsers) {
                 int matchIdx = vParser.match(value);
                 if(matchIdx >= 0) {
-                    if(vParser.ignore()) {
-                        // ignore this node.
-                        // "key =# comment\nvalue" comment node will be detected before value!
-                        // "key =   value" whitespace node will be detected before value!
-                        // "key ="
-                    } else {
-
-                    }
                     valueIndex = matchIdx + startIndex;
                     return valueIndex;
                 }
             }
+
+            noMatch();
             return -1;
         }
-        protected void resetItem() {}
-        protected void parseValue() {}
-        protected void parseKey() {}
 
-        @Override
-        protected void encounterValueChar(char c) {
-            super.encounterValueChar(c);
-            if(getEnumState() == VAL &&
-                    (getValueIndex() >= 0 && (getPos() + 1) >= getValueIndex())) {
-                // we reached the last index of the value.
-                // transition to the end and stop
-                transition(END);
-                stop();
+        protected void parseKey() {
+            CharSequence target = (itemBegin | itemEnd) < 0 ?
+                    SmallCharSequence.make() : base.subSequence(itemBegin, itemEnd + 1);
+            List<AParser<? extends K>> keyParsers = switch (getEnumState().getType()) {
+                case GROUP -> groupKeyParsers;
+                case RAW -> rawKeyParsers;
+                default -> throw new IllegalStateException("parsing Key while not in " + PairType.GROUP + " or " + PairType.RAW + " state.");
+            };
+
+            foundMatch: {
+                for (AParser<? extends K> kP : keyParsers) {
+                    int size = kP.match(target);
+                    if (size >= 0 && size == target.length()) {
+                        break foundMatch; // we found a match
+                    }
+                }
+                // otherwise we have no match on the key, stop parsing
+                noMatch();
+            }
+        }
+
+        protected void parseValue() {
+            int start = itemBegin;
+            int end;
+
+            int valIdx = getValueIndex();
+            if(valIdx >= 0) {
+                end = valIdx;
+            } else {
+                end = itemEnd + 1;
+            }
+            CharSequence target = (itemBegin|itemEnd) < 0 ?
+                    SmallCharSequence.make() : base.subSequence(start, end);
+
+            List<AParser<? extends V>> valParsers = switch(getEnumState().getType()) {
+                case GROUP -> groupValParsers;
+                case RAW ->  rawValParsers;
+                default -> throw new IllegalStateException("parsing Val while not in " + PairType.GROUP + " or " + PairType.RAW + " state.");
+            };
+            foundMatch: {
+                for (AParser<? extends V> vP : valParsers) {
+                    int size = vP.match(target);
+                    if (size >= 0 && size + start == end) {
+                        break foundMatch; // we found a match
+                    }
+                }
+                // no match found - stop parsing.
+                noMatch();
             }
         }
 
@@ -416,36 +483,12 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
         }
     }
 
-    private static class PairParseState<K, V> extends PairMatchState<V> {
-        private int itemBegin = -1;
-        private int itemEnd = -1;
-
-        private final List<AParser<? extends K>> groupKeyParsers;
-        private final List<AParser<? extends V>> groupValParsers;
-        private final List<AParser<? extends K>> rawKeyParsers;
+    private static class PairParseState<K, V> extends PairMatchState<K, V> {
 
         private PairParseState(CharSequence base,
                                List<AParser<? extends K>> groupKeyParsers, List<AParser<? extends V>> groupValParsers,
                                List<AParser<? extends K>> rawKeyParsers, List<AParser<? extends V>> rawValParsers) {
-            super(base, rawValParsers);
-            this.groupKeyParsers = groupKeyParsers;
-            this.groupValParsers = groupValParsers;
-            this.rawKeyParsers = rawKeyParsers;
-        }
-
-        @Override
-        protected void encounterValueChar(char c) {
-            if(itemBegin >= 0) {
-                itemEnd = getPos();
-            } else{
-                itemEnd = itemBegin = getPos();
-            }
-            super.encounterValueChar(c);
-        }
-
-        @Override
-        protected void resetItem() {
-            itemBegin = itemEnd = -1;
+            super(base, groupKeyParsers, groupValParsers, rawKeyParsers, rawValParsers);
         }
 
         private ANode<? extends K> parsedKey = null;
@@ -453,42 +496,47 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
 
         @Override
         protected void parseKey() {
-            CharSequence target = (itemBegin|itemEnd) < 0 ?
-                    SmallCharSequence.make() : super.base.subSequence(itemBegin, itemEnd + 1);
+            CharSequence target = (super.itemBegin|super.itemEnd) < 0 ?
+                    SmallCharSequence.make() : super.base.subSequence(super.itemBegin, super.itemEnd + 1);
             List<AParser<? extends K>> keyParsers = switch(getEnumState().getType()) {
-                case GROUP -> groupKeyParsers;
-                case RAW ->  rawKeyParsers;
+                case GROUP -> super.groupKeyParsers;
+                case RAW ->  super.rawKeyParsers;
                 default -> throw new IllegalStateException("parsing Key while not in " + PairType.GROUP + " or " + PairType.RAW + " state.");
             };
             for(AParser<? extends K> kP : keyParsers) {
                 int size = kP.match(target);
                 if(size >= 0) {
                     if(size != target.length())
-                        throw new AParserException();
+                        throw new AParserException(
+                                "parser %s did not find a full match \"%s\" in \"%s\":%d:%d".formatted(kP.getClass().getSimpleName(),
+                                        target, super.base, super.itemBegin, super.itemEnd + 1)
+                        );
 
                     parsedKey = kP.parse(target);
                     return;
                 }
             }
-            throw new AParserException();
+            throw new AParserException(
+                    "could not parse \"%s\" in \"%s\":%d:%d".formatted(target, super.base, super.itemBegin, super.itemEnd)
+            );
         }
 
         @Override
         protected void parseValue() {
-            int start = itemBegin;
+            int start = super.itemBegin;
             int end;
 
             int valIdx = super.getValueIndex();
             if(valIdx >= 0) {
                 end = valIdx;
             } else {
-                end = itemEnd + 1;
+                end = super.itemEnd + 1;
             }
-            CharSequence target = (itemBegin|itemEnd) < 0 ?
+            CharSequence target = (super.itemBegin|super.itemEnd) < 0 ?
                     SmallCharSequence.make() : super.base.subSequence(start, end);
 
             List<AParser<? extends V>> valParsers = switch(getEnumState().getType()) {
-                case GROUP -> groupValParsers;
+                case GROUP -> super.groupValParsers;
                 case RAW ->  super.rawValParsers;
                 default -> throw new IllegalStateException("parsing Val while not in " + PairType.GROUP + " or " + PairType.RAW + " state.");
             };
@@ -529,7 +577,7 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
             ACommentParser.buildCommentAdvancer(
                     AListParser.buildListMatcher(new CompositeAdvancer<>(PairCharType.INSTANCE.values())));
 
-    private static <V> PairMatchState<V> advance(PairMatchState<V> state, CharSequence cs) {
+    private static <K, V> PairMatchState<K, V> advance(PairMatchState<K, V> state, CharSequence cs) {
         CharAdvancer.runAdvancer(cs,
                  ChainedAdvancerState.chain(new ACommentParser.CommentState(), new AListParser.ListMatchState(), state),
                 PAIR_MATCH_ADVANCER);
@@ -579,7 +627,9 @@ public class APairParser<K, V> implements AParser<NodePair<K, V>> {
 
     @Override
     public int match(CharSequence cs) {
-        PairMatchState<V> matchState = new PairMatchState<>(cs, rawValParsers);
+        PairMatchState<K, V> matchState = new PairMatchState<>(cs,
+                groupKeyParsers, groupValParsers,
+                rawKeyParsers, rawValParsers);
         advance(matchState, cs);
         if(matchState.getEnumState() == END) {
             return matchState.getEndPos();

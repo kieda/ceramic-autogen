@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 public class ANameParser implements AParser<CharSequence>{
     // don't allow 0-9 in first char, but allow in subsequent chars
 
+    // todo allow ".", "-" etc in the middle of names (but not at the beginning or end)
     public static int nameLength(CharSequence cs) {
         int pos = 0;
         if(pos < cs.length()) {

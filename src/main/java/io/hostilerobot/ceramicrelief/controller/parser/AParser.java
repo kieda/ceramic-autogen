@@ -15,17 +15,12 @@ public interface AParser<T> {
     }
 
     public static final int RADIX = 10;
+    // these will separate a name or an item if found in the middle
+    public static final char[] RESERVED_SEPARATORS = CharArrays.sort(
+            ',', '=', '/', '\\', '#', '(', ')', '<', '>', '[', ']', ':'
+    );
+    // these are all reserved chars, and cannot be found at the beginning of a name
     public static final char[] RESERVED_CHARS = CharArrays.sort(
-        ',', '=', '/', '\\', '#', '(', ')', '<', '>', '[', ']', '-', ':'
+        ',', '=', '/', '\\', '#', '(', ')', '<', '>', '[', ']', ':', '.', '-'
     );
-    static final char[] ESCAPED_CHARS = CharArrays.sort(
-        '\\', '[', ']', '-'
-    );
-    // characters that can't be found in a name
-    public static final String RESERVED = CharArrays.map(c -> {
-        if(Arrays.binarySearch(ESCAPED_CHARS, c) >= 0) {
-            return SmallCharSequence.make('\\', c);
-        }
-        return SmallCharSequence.make(c);
-    }, RESERVED_CHARS) + "\\s";
 }

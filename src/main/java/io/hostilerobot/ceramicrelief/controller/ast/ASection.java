@@ -21,7 +21,7 @@ public class ASection<V> implements ANode<Pair<ASectionName, ANodeList<V>>> {
 
     @Override
     public String toString() {
-        return section.getKey() + "\n" + getValue();
+        return section.getKey() + "\n" + section.getVal();
     }
 
     @Override

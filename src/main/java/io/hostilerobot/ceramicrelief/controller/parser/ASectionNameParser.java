@@ -113,6 +113,9 @@ public class ASectionNameParser implements AParser<CharSequence> {
                     case FIRST_CHAR fc -> NAME;
                     // check the non-leading char
                     case NAME n -> {
+                        // todo - change to RESERVED_SEPARATORS, but we also don't want the name to end in a reserved char
+                        //    like  "com.foo.MyClass."
+                        //    or    "my-phrase-"         -- what if we have my-phrase- 123.5, would it be "my-phrase-", "123.5" or "my-phrase" "- 123.5"
                         if(Arrays.binarySearch(AParser.RESERVED_CHARS, c) >= 0) {
                             // !!! we can't use the char in the name.
                             state.stop();

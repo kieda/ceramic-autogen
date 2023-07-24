@@ -75,32 +75,42 @@ public class APropertiesParser<X> implements AParser<List<ASection<X>>> {
         int finalPos = sectionPos;
         cs = cs.subSequence(sectionPos, cs.length());
 
+        int lastPos = -1; // if we ignored the last item, then we should use the last pos
+
         // move forward
-        foundMatch:
+        matchLoop:
         while(finalPos < totalLen) {
             // move forward a sectionName if we found one
             // sectionName takes highest precedence
             sectionPos = sectionNameParser.match(cs);
             if (sectionPos >= 0) {
+                lastPos = -1; // we don't ignore the section name
                 cs = cs.subSequence(sectionPos, cs.length());
                 finalPos += sectionPos;
-                continue foundMatch;
+                continue matchLoop;
             }
 
             for (AParser<? extends X> pp : parsers) {
                 int matchPos = pp.match(cs);
                 if (matchPos >= 0) {
+                    if(!pp.ignore()) {
+                        // last seen match is not ignored, reset last pos
+                        lastPos = -1;
+                    } else if(lastPos < 0) {
+                        // otherwise if lastPos is not set yet then set it to finalPos
+                        lastPos = finalPos;
+                    }
+
                     cs = cs.subSequence(matchPos, cs.length());
                     finalPos += matchPos;
-                    continue foundMatch;
+                    continue matchLoop;
                     // found a value match. Continue to find more value matches
                 }
             }
-
             // no matches found. Return pos
-            return finalPos;
+            break matchLoop;
         }
-
-        return finalPos;
+        // use last non-ignored position, otherwise use the finalPos
+        return lastPos < 0 ? finalPos : lastPos;
     }
 }

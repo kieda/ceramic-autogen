@@ -153,10 +153,10 @@ public class ADecimalParser implements AParser<Double> {
             public void accept(char c, DecimalState state) {
                 if(state.runTransition(enumState -> switch (enumState) {
                     case START s -> VERROR; // "q"
-                    case INT i -> Arrays.binarySearch(RESERVED_CHARS, c) < 0 ? VERROR : VEND; // "1q" vs "1," or "1("
-                    case INT_SEP i -> Arrays.binarySearch(RESERVED_CHARS, c) < 0 ? VERROR : VEND; // "123.q" vs "123.,"
+                    case INT i -> Arrays.binarySearch(RESERVED_SEPARATORS, c) < 0 ? VERROR : VEND; // "1q" vs "1," or "1("
+                    case INT_SEP i -> Arrays.binarySearch(RESERVED_SEPARATORS, c) < 0 ? VERROR : VEND; // "123.q" vs "123.,"
                     case DECIMAL_SEP ds -> VERROR; // ".," or ".q" are not allowed
-                    case DECIMAL d -> Arrays.binarySearch(RESERVED_CHARS, c) < 0 ? VERROR : VEND; // 123.123q vs 123.123,
+                    case DECIMAL d -> Arrays.binarySearch(RESERVED_SEPARATORS, c) < 0 ? VERROR : VEND; // 123.123q vs 123.123,
                     case SIGN s -> VERROR; // "+q"
                     default -> null; // END, ERROR
                 }).isEndState()) {
