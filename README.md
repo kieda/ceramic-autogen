@@ -9,19 +9,18 @@ I decided it would be neat if I had a mug that had the script of The Bee Movie o
 
 Here's the result as greenware after being fired!
 
-![Greenware Bee Movie Mug](bee-movie-mug-greenware.jpg)
+<p align="center">
+<img width="40%" src="bee-movie-mug-greenware.jpg" alt="Greenware">
+</p>
 
-And, glazed and ready to go
-![Barry B. Benson](bee-movie-mug-complete.jpg)
+Glazed and ready to go
+
+<p align="center">
+<img width="40%" src="bee-movie-mug-complete.jpg" alt="Barry B. Benson">
+</p>
 
 This uses a different algorithm vs the more recent image-based one. This algorithm wraps a series of text around the side of the hull, avoiding getting too close to any of the edges. 
 Since this was my first creation with this algorithm, it looks a bit... rustic. 
-
-However it is still excellent to take to your favorite coffee shop
-![You Like Jazz](bee-movie-mug-coffee.jpg)
-
-Yeah. It's pretty cool.
-![According to all known laws of aviation, there is no way a bee should be able to fly.](bee-movie-mug-happy.jpg)
 
 ## Current usage
 - Current usage is specified in [ProTag](https://github.com/kieda/protag), which is a custom properties language that defines our mesh and image source
@@ -58,3 +57,17 @@ Bulk of the work is in `io.hostilerobot.ceramicrelief.texture`. Specifically, th
     - When we encounter a vertex (face) we have previously encountered, we merge the two paths together along the edge using cubic interpolation
 - We then have a path that will wrap around an arbitrary mesh given an image. We then calculate the resulting depth of a mesh based on user parameters (Saturation, Value, Etc.)
 - The 3d part forms a mesh, which is broken into constituent components for 3d printing
+
+## More Things
+
+Note that these mugs are still excellent to take to your favorite coffee shop
+
+<p align="center">
+<img width="40%" src="bee-movie-mug-coffee.jpg" alt="You Like Jazz?">
+</p>
+
+Yeah. It's pretty cool.
+
+<p align="center">
+<img width="40%" src="bee-movie-mug-happy.jpg" alt="According to all known laws of aviation, there is no way a bee should be able to fly.">
+</p>
