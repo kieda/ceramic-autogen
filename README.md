@@ -19,8 +19,9 @@ Glazed and ready to go
 <img width="40%" src="bee-movie-mug-complete.jpg" alt="Barry B. Benson">
 </p>
 
-This uses a different algorithm vs the more recent image-based one. This algorithm wraps a series of text around the side of the hull, avoiding getting too close to any of the edges. 
-Since this was my first creation with this algorithm, it looks a bit... rustic. 
+This mug uses an algorithm that wraps a series of text around the side of the hull, avoiding getting too close to any of the edges. 
+Since this was my first creation with this algorithm, it looks a bit... rustic. I've recently implemented another algorithm that wraps an arbitrary image
+around a hull by using vector paths.
 
 ## Current usage
 - Current usage is specified in [ProTag](https://github.com/kieda/protag), which is a custom properties language that defines our mesh and image source
