@@ -18,7 +18,7 @@ This uses a different algorithm vs the more recent image-based one. This algorit
 Since this was my first creation with this algorithm, it looks a bit... rustic. 
 
 However it is still excellent to take to your favorite coffee shop
-![You Like Jazz](bee-movie-mug-coffee.jpg | width=100)
+![You Like Jazz](bee-movie-mug-coffee.jpg)
 
 Yeah. It's pretty cool.
 ![According to all known laws of aviation, there is no way a bee should be able to fly.](bee-movie-mug-happy.jpg)
