@@ -5,9 +5,22 @@ package io.hostilerobot.ceramicrelief.controller;
  *    watch a directory DIR for file changes
  *
  *    on an update: parse using the default parsing format
- *    default parsing format
- *        multiple sections followed by key/value pairs
- *        a key/value are essentially numbers, names, or a list of names/numbers
- *        the section defines how we handle encountering a new key/value pair
- *        can have different section plugins
+ *    default parsing format: JSON
+ *
+ *    using: apache commons IO FileAlterationMonitor
+ *          + jackson JSON/databind
+ *
+ *  how it works:
+ *      * watch a directory for .json files
+ *      * each .json file will represent a test case
+ *      * on a change, we run whatever code is associated with the test
+ *
+ *  format:
+ *      {
+ *          "type": JavaClassTestType
+ *          "vertices": ( [ vertex ... ] | { name : vertex } )
+ *          "faces": [ triangle ... ]
+ *      }
+ *
+ *
  */
