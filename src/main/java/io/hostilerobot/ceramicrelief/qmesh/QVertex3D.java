@@ -1,5 +1,6 @@
 package io.hostilerobot.ceramicrelief.qmesh;
 
+import io.hostilerobot.ceramicrelief.util.Epsilon;
 import org.apache.commons.math.fraction.Fraction;
 
 import java.util.Objects;
@@ -8,15 +9,14 @@ import java.util.Objects;
  * intermediate vertex representation. We use quotients rather than floats
  */
 public class QVertex3D {
-    // use fractions for extra spicy exactness and also so we don't have to deal with strange floating point BS
-    private Fraction x;
-    private Fraction y;
-    private Fraction z;
+    private double x;
+    private double y;
+    private double z;
 
     public QVertex3D() {
-        this.x = Fraction.ZERO;
-        this.y = Fraction.ZERO;
-        this.z = Fraction.ZERO;
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
     }
 
     public QVertex3D(QVertex3D other) {
@@ -24,34 +24,34 @@ public class QVertex3D {
         this.y = other.y;
         this.z = other.z;
     }
-    public QVertex3D(Fraction x, Fraction y, Fraction z) {
+    public QVertex3D(double x, double y, double z) {
         this.x = x;
         this.y = y;
         this.z = z;
     }
 
-    public Fraction getX() {
+    public double getX() {
         return x;
     }
-    public Fraction getY() {
+    public double getY() {
         return y;
     }
-    public Fraction getZ() {
+    public double getZ() {
         return z;
     }
 
-    public void setX(Fraction x) {
+    public void setX(double x) {
         this.x = x;
     }
 
-    public void setY(Fraction y) {
+    public void setY(double y) {
         this.y = y;
     }
 
-    public void setZ(Fraction z) {
+    public void setZ(double z) {
         this.z = z;
     }
-    public void set(Fraction x, Fraction y, Fraction z) {
+    public void set(double x, double y, double z) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -62,7 +62,7 @@ public class QVertex3D {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         QVertex3D vertex3D = (QVertex3D) o;
-        return Objects.equals(x, vertex3D.x) && Objects.equals(y, vertex3D.y) && Objects.equals(z, vertex3D.z);
+        return Epsilon.equals(x, vertex3D.x) && Epsilon.equals(y, vertex3D.y) && Epsilon.equals(z, vertex3D.z);
     }
 
     @Override
@@ -70,10 +70,10 @@ public class QVertex3D {
         return Objects.hash(x, y, z);
     }
 
-    public Fraction dot(QVertex3D other) {
-        return this.x.multiply(other.x)
-                .add(this.y.multiply(other.y))
-                .add(this.z.multiply(other.z));
+    public double dot(QVertex3D other) {
+        return this.x * other.x
+                + this.y * other.y
+                + this.z * other.z;
     }
 
     public QVertex3D cross(QVertex3D other) {
@@ -84,17 +84,17 @@ public class QVertex3D {
 
     public static void cross(QVertex3D v1, QVertex3D v2, QVertex3D dest) {
         if(v1.equals(v2)) {
-            dest.x = Fraction.ZERO;
-            dest.y = Fraction.ZERO;
-            dest.z = Fraction.ZERO;
+            dest.x = 0;
+            dest.y = 0;
+            dest.z = 0;
             return;
         }
         // x = v1.y*v2.z - v1.z*v2.y
         // y = v1.z*v2.x - v1.x*v2.z
         // z = v1.x*v2.y - v1.y*v2.x
-        Fraction xd = (v1.y.multiply(v2.z)).subtract(v1.z.multiply(v2.y)); // temp vars in case v1 or v2 == dest
-        Fraction yd = (v1.z.multiply(v2.x)).subtract(v1.x.multiply(v2.z));
-        dest.z = (v1.x.multiply(v2.y)).subtract(v1.y.multiply(v2.x));
+        double xd = (v1.y * v2.z) - (v1.z * v2.y); // temp vars in case v1 or v2 == dest
+        double yd = (v1.z * v2.x) - (v1.x * v2.z);
+        dest.z = (v1.x * v2.y) - (v1.y * v2.x);
         dest.y = yd;
         dest.x = xd;
     }
@@ -107,14 +107,14 @@ public class QVertex3D {
 
     public static void subtract(QVertex3D v1, QVertex3D v2, QVertex3D dest) {
         if(v1.equals(v2)) {
-            dest.x = Fraction.ZERO;
-            dest.y = Fraction.ZERO;
-            dest.z = Fraction.ZERO;
+            dest.x = 0;
+            dest.y = 0;
+            dest.z = 0;
             return;
         }
-        dest.x = v1.x.subtract(v2.x);
-        dest.y = v1.y.subtract(v2.y);
-        dest.z = v1.z.subtract(v2.z);
+        dest.x = v1.x - v2.x;
+        dest.y = v1.y - v2.y;
+        dest.z = v1.z - v2.z;
     }
 
     public QVertex3D add(QVertex3D other) {
@@ -124,12 +124,12 @@ public class QVertex3D {
     }
 
     public static void add(QVertex3D v1, QVertex3D v2, QVertex3D dest) {
-        dest.x = v1.x.add(v2.x);
-        dest.y = v1.y.add(v2.y);
-        dest.z = v1.z.add(v2.z);
+        dest.x = v1.x + v2.x;
+        dest.y = v1.y + v2.y;
+        dest.z = v1.z + v2.z;
     }
 
     public double length() {
-        return Math.sqrt(this.dot(this).doubleValue());
+        return Math.sqrt(this.dot(this));
     }
 }

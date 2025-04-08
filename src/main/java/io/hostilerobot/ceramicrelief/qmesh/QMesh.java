@@ -165,7 +165,7 @@ public class QMesh {
         }
     }
 
-    public boolean setVertex(int id, Fraction x, Fraction y, Fraction z) {
+    public boolean setVertex(int id, double x, double y, double z) {
         if(!validVertex(id)) {
             return false;
         }
@@ -180,7 +180,7 @@ public class QMesh {
         return true;
     }
 
-    public int addVertex(Fraction x, Fraction y, Fraction z) {
+    public int addVertex(double x, double y, double z) {
         return addVertex(new QVertex3D(x, y, z));
     }
 

@@ -14,6 +14,7 @@ import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangl
 import io.hostilerobot.ceramicrelief.texture.TEdge;
 import io.hostilerobot.ceramicrelief.texture.TEdgeConnectionPolicy;
 import io.hostilerobot.ceramicrelief.texture.TFace;
+import io.hostilerobot.ceramicrelief.util.Epsilon;
 import javafx.geometry.Point2D;
 import org.apache.commons.math.fraction.Fraction;
 import org.apache.commons.math.util.FastMath;
@@ -48,10 +49,6 @@ import java.util.Map;
  *      Map<IMeshEdge, TEdgeConnectionPolicy> -- mapping from distinct 3d edges to how they should be connected in 2d
  */
 public class DFSMeshPartitionTraversal implements MeshPartitionTraversal {
-    // "close enough" distance for two points to be considered equal to another
-    // things might not be exact due to the nature of double floating point errors
-    private final static double EPSILON = 0.0001;
-    private final static double EPSILON_SQ = EPSILON * EPSILON;
 
     private static void populateEdge1_2(QMesh mesh, QMeshFace faceToAdd, HeapElem reference) {
         QVertex3D v2 = mesh.getVertex(faceToAdd.getV2());
@@ -343,18 +340,18 @@ public class DFSMeshPartitionTraversal implements MeshPartitionTraversal {
                 double len12 = v12.length();
 
                 // X in unit vector
-                double u12x = v12.getX().doubleValue() / len12;
-                double u12y = v12.getY().doubleValue() / len12;
-                double u12z = v12.getZ().doubleValue() / len12;
+                double u12x = v12.getX() / len12;
+                double u12y = v12.getY() / len12;
+                double u12z = v12.getZ() / len12;
 
                 // Z in orthonormal basis
                 QVertex3D normal = backingMesh.getNormal(currentMeshFaceId);
                 double lenNormal = normal.length();
 
                 // Z in unit vector
-                double uNormalx = normal.getX().doubleValue() / lenNormal;
-                double uNormaly = normal.getY().doubleValue() / lenNormal;
-                double uNormalz = normal.getZ().doubleValue() / lenNormal;
+                double uNormalx = normal.getX() / lenNormal;
+                double uNormaly = normal.getY() / lenNormal;
+                double uNormalz = normal.getZ() / lenNormal;
 
                 // Y in orthonormal basis, where Y = X x Z
                 // this is already a unit vector, as X and Z are units.
@@ -376,9 +373,9 @@ public class DFSMeshPartitionTraversal implements MeshPartitionTraversal {
                 // where t3x = (v1 - v3) . unit(X), t3y = (v1 - v3) . unit(Y)
                 double t3x, t3y;
                 {
-                    double v31x = v31.getX().doubleValue();
-                    double v31y = v31.getY().doubleValue();
-                    double v31z = v31.getZ().doubleValue();
+                    double v31x = v31.getX();
+                    double v31y = v31.getY();
+                    double v31z = v31.getZ();
                     t3x = u12x*v31x + u12y*v31y + u12z*v31z;
                     t3y = xC*v31x + yC*v31y + zC*v31z;
                 }
@@ -485,7 +482,7 @@ public class DFSMeshPartitionTraversal implements MeshPartitionTraversal {
                         double currentDistance = GeometryUtil.distanceSquared(adjacentTVertex.getX(), adjacentTVertex.getY(),
                                 insertedPoint.getX(), insertedPoint.getY());
                         // ensure that the common vertex that we find is actually close to the new 2d vertex we're attempting to lay down
-                        if((commonTVertex == null && currentDistance <= EPSILON_SQ)
+                        if((commonTVertex == null && currentDistance <= Epsilon.epsilonSq())
                                 || (commonTVertex != null && currentDistance < currentMinDistance)) {
                             commonTVertex = adjacentTIndex;
                             currentMinDistance = currentDistance;
@@ -586,9 +583,9 @@ public class DFSMeshPartitionTraversal implements MeshPartitionTraversal {
         // simpler method: return -cos(theta), which is calculated from the dot product of the two normals
         QVertex3D n1 = mesh.getNormal(currentFace);
         QVertex3D n2 = mesh.getNormal(otherFace);
-        Fraction dotProd = n1.dot(n2);
-        double vectorLength = Math.sqrt(n1.dot(n1).multiply(n2.dot(n2)).doubleValue());
+        double dotProd = n1.dot(n2);
+        double vectorLength = Math.sqrt(n1.dot(n1) * n2.dot(n2));
         // return -cosTheta. This has the desired effect of being the highest value at theta PI and -PI, and lowest value at theta 0
-        return -(dotProd.doubleValue() / vectorLength);
+        return -(dotProd / vectorLength);
     }
 }

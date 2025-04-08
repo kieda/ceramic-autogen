@@ -6,19 +6,19 @@ import java.util.Objects;
 
 public class QVertex2D {
     // use fractions for extra spicy exactness and also so we don't have to deal with strange floating point BS
-    private Fraction x;
-    private Fraction y;
+    private double x;
+    private double y;
 
-    public QVertex2D(Fraction x, Fraction y) {
+    public QVertex2D(double x, double y) {
         this.x = x;
         this.y = y;
     }
 
-    public Fraction getX() {
+    public double getX() {
         return x;
     }
 
-    public Fraction getY() {
+    public double getY() {
         return y;
     }
 
