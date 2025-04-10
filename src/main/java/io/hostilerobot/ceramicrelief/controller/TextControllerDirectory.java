@@ -9,10 +9,7 @@ import org.apache.commons.io.filefilter.DelegateFileFilter;
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.io.filefilter.OrFileFilter;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FilenameFilter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -31,7 +28,7 @@ import java.util.stream.Collectors;
  *      .build();
  */
 public class TextControllerDirectory {
-    private final List<TextControllerFactory> factories;
+    private final List<TextControllerMatcher> factories;
     private final File directoryToWatch;
     private final DirectoryWatcher watcher;
     private final ControllerChangeListener changeListener;
@@ -81,7 +78,7 @@ public class TextControllerDirectory {
         }
     }
 
-    private TextControllerDirectory(File controller, List<TextControllerFactory> factories,
+    private TextControllerDirectory(File controller, List<TextControllerMatcher> factories,
                                     final Runnable onComplete,
                                     final Consumer<Throwable> onError) throws IOException {
         if(!controller.isDirectory()) {
@@ -123,14 +120,14 @@ public class TextControllerDirectory {
         List<IOException> exceptions = null;
 
         for(int i = 0; i < factories.size(); i++) {
-            TextControllerFactory factory = factories.get(i);
+            TextControllerMatcher factory = factories.get(i);
             if(factory.accept(parentFolder, child)) {
                 var map = individualControllers.computeIfAbsent(childFile, key -> new HashMap<>());
                 try {
                     if (map.containsKey(i)) {
                         map.get(i).update(new FileInputStream(childFile));
                     } else {
-                        map.put(i, factory.newController(childFile));
+                        map.put(i, factory.newController(new FileInputStream(childFile)));
                     }
                 } catch(IOException ex) {
                     if(exceptions == null) exceptions = new ArrayList<>();
@@ -162,15 +159,15 @@ public class TextControllerDirectory {
     }
 
     public static class Builder{
-        private final List<TextControllerFactory> factories = new ArrayList<>();
+        private final List<TextControllerMatcher> factories = new ArrayList<>();
         private Runnable onComplete = null;
         private Consumer<Throwable> onError = null;
-        public Builder and(TextControllerFactory factory){
+        public Builder and(TextControllerMatcher factory){
             factories.add(factory);
             return this;
         }
-        public Builder and(FilenameFilter matcher, Function<File, TextController> newController) {
-            factories.add(new DelegateControllerFactory(matcher, newController));
+        public Builder and(FilenameFilter matcher, TextControllerFactory newController) {
+            factories.add(new DelegateControllerMatcher(matcher, newController));
             return this;
         }
         public Builder onComplete(Runnable onComplete) {

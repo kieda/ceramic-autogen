@@ -6,14 +6,13 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
+import java.util.function.Consumer;
 
 public class JsonDataController<T> extends AbstractDataController<T> {
 
-    private static ObjectMapper mapper;
-    private Class<T> clazz;
-
-    public JsonDataController(Class<T> clazz) {
-        this.clazz = clazz;
+    protected static ObjectMapper mapper;
+    static {
         mapper = JsonMapper.builder()
                 .enable(JsonReadFeature.ALLOW_JAVA_COMMENTS)
                 .enable(JsonReadFeature.ALLOW_SINGLE_QUOTES)
@@ -24,6 +23,15 @@ public class JsonDataController<T> extends AbstractDataController<T> {
                 .enable(JsonReadFeature.ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS)
                 .enable(JsonReadFeature.ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS)
                 .build();
+    }
+    private final Class<T> clazz;
+
+    protected JsonDataController(Class<T> clazz) {
+        this.clazz = clazz;
+    }
+
+    public static <T> Builder<T> builder(final Class<T> clazz){
+        return new Builder<>(() -> new JsonDataController<>(clazz));
     }
 
     @Override

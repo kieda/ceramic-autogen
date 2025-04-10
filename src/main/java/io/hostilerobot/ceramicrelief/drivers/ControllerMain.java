@@ -2,12 +2,11 @@ package io.hostilerobot.ceramicrelief.drivers;
 
 import io.hostilerobot.ceramicrelief.controller.JsonDataController;
 import io.hostilerobot.ceramicrelief.controller.TextControllerDirectory;
-import io.hostilerobot.ceramicrelief.controller.TextControllerFactory;
+import io.hostilerobot.ceramicrelief.controller.TextControllerMatcher;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ControllerMain {
     public static void main(String[] args) throws Exception{
@@ -16,22 +15,20 @@ public class ControllerMain {
         new ControllerMain();
     }
 
-
+    private AtomicBoolean shutdown = new AtomicBoolean(false);
     ControllerMain() throws Exception {
 
         var resource = getClass().getResource("/controller/").getPath();
         // hacky bullshit so we can get the right file
         resource = resource.replace("/target/classes/", "/src/main/resources/");
         TextControllerDirectory.builder()
-                .and(TextControllerFactory.fileExtension("json"), f -> {
-                    System.out.println("making controller for " + f);
-                    var controller = new JsonDataController<>(Map.class);
-                    controller.addListener( System.out::println );
-                    return controller;
-                })
+                .and(TextControllerMatcher.fileExtension("json"), f -> JsonDataController.builder(Map.class)
+                        .addListener( System.out::println )
+                        .build(f))
                 .onError(Throwable::printStackTrace)
+                .onComplete(() -> shutdown.set(true))
                 .build(Paths.get(resource));
-        while(true) {
+        while(!shutdown.get()) {
             Thread.sleep(1000);
         }
     }
