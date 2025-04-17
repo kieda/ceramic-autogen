@@ -1,6 +1,7 @@
 package io.hostilerobot.ceramicrelief.drivers;
 
-import io.hostilerobot.ceramicrelief.controller.JsonDataController;
+import io.hostilerobot.ceramicrelief.controller.DataController;
+import io.hostilerobot.ceramicrelief.controller.JsonDataProcessor;
 import io.hostilerobot.ceramicrelief.controller.TextControllerDirectory;
 import io.hostilerobot.ceramicrelief.controller.TextControllerMatcher;
 
@@ -22,8 +23,10 @@ public class ControllerMain {
         // hacky bullshit so we can get the right file
         resource = resource.replace("/target/classes/", "/src/main/resources/");
         TextControllerDirectory.builder()
-                .and(TextControllerMatcher.fileExtension("json"), f -> JsonDataController.builder(Map.class)
+                .and(TextControllerMatcher.fileExtension("json"), f ->
+                        DataController.builder(JsonDataProcessor.builder(Map.class).build())
                         .addListener( System.out::println )
+                        .disableMerging()
                         .build(f))
                 .onError(Throwable::printStackTrace)
                 .onComplete(() -> shutdown.set(true))
