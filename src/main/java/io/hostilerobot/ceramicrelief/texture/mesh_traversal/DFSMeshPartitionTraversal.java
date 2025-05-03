@@ -2,7 +2,7 @@ package io.hostilerobot.ceramicrelief.texture.mesh_traversal;
 
 import com.github.davidmoten.rtree2.Entry;
 import com.github.davidmoten.rtree2.RTree;
-import com.github.davidmoten.rtree2.SearchRTree;
+import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.SearchRTree;
 import com.github.davidmoten.rtree2.geometry.internal.GeometryUtil;
 import io.hostilerobot.ceramicrelief.qmesh.QMesh;
 import io.hostilerobot.ceramicrelief.qmesh.QMeshEdge;
@@ -16,7 +16,6 @@ import io.hostilerobot.ceramicrelief.texture.TEdgeConnectionPolicy;
 import io.hostilerobot.ceramicrelief.texture.TFace;
 import io.hostilerobot.ceramicrelief.util.Epsilon;
 import javafx.geometry.Point2D;
-import org.apache.commons.math.fraction.Fraction;
 import org.apache.commons.math.util.FastMath;
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;

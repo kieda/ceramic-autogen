@@ -6,7 +6,7 @@ import org.apache.commons.math.fraction.Fraction;
 import java.util.Objects;
 
 /**
- * intermediate vertex representation. We use quotients rather than floats
+ * intermediate vertex representation.
  */
 public class QVertex3D {
     private double x;

@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -23,6 +24,10 @@ public interface TextControllerMatcher extends FilenameFilter{
 
     public static FilenameFilter fileExtension(String fileExtension) {
         return (f, name) -> FilenameUtils.isExtension(name, fileExtension);
+    }
+    public static FilenameFilter nameAndExtension(String fileName, String fileExtension) {
+        return (f, name) -> Objects.equals(fileName, FilenameUtils.getBaseName(name))
+                && FilenameUtils.isExtension(name, fileExtension);
     }
 }
 

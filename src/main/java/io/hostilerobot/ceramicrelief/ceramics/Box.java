@@ -1,7 +1,5 @@
 package io.hostilerobot.ceramicrelief.ceramics;
 
-import com.sun.javafx.fxml.builder.TriangleMeshBuilder;
-import com.sun.javafx.scene.shape.TriangleMeshHelper;
 import javafx.scene.image.Image;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.ObservableFaceArray;

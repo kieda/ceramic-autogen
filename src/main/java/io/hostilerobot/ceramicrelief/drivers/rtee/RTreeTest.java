@@ -1,10 +1,10 @@
-package io.hostilerobot.ceramicrelief.drivers;
+package io.hostilerobot.ceramicrelief.drivers.rtee;
 
 import io.hostilerobot.ceramicrelief.controller.DataController;
 import io.hostilerobot.ceramicrelief.controller.JsonDataProcessor;
 import io.hostilerobot.ceramicrelief.controller.TextControllerDirectory;
 import io.hostilerobot.ceramicrelief.controller.TextControllerMatcher;
-import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangle2D;
+import io.hostilerobot.ceramicrelief.drivers.ControllerMain;
 import javafx.application.Application;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
@@ -18,9 +18,9 @@ import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class ControllerMain extends Application {
+public class RTreeTest extends Application {
     public static void main(String[] args) throws Exception{
-        launch(ControllerMain.class, args);
+        launch(RTreeTest.class, args);
     }
 
     private AtomicBoolean shutdown = new AtomicBoolean(false);
@@ -45,24 +45,23 @@ public class ControllerMain extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
-        stage.setTitle("Test RTree");
-        Group root = new Group();
-        Canvas canvas = new Canvas(800, 800);
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        drawTriangle(gc,
-                new Point2D(0, 0),
-                new Point2D(100, 0),
-                new Point2D(100, 100));
-        root.getChildren().add(canvas);
-        stage.setScene(new Scene(root));
+        stage.setTitle("Test RTree2");
+        TriangleMeshView root = new TriangleMeshView();
+        root.getTriangleViews().add(new TriangleView(new Point2D(50, 50), new Point2D(50, 300), new Point2D(300, 300)));
+        Scene scene = new Scene(root);
+        scene.onMousePressedProperty().set(mouseEvent -> {
+            double x = mouseEvent.getX();
+            double y = mouseEvent.getY();
+            root.updateTouchingVertices(7, x, y);
+        });
+        scene.onMouseDraggedProperty().set(mouseEvent -> {
+            root.drag(mouseEvent.getX(), mouseEvent.getY());
+        });
+
+        stage.setScene(scene);
+        stage.setWidth(800);
+        stage.setHeight(800);
         stage.show();
 
-    }
-    private void drawTriangle(GraphicsContext context, Point2D a, Point2D b, Point2D c) {
-        context.setStroke(Color.DARKSLATEBLUE);
-        context.setLineWidth(5);
-        context.strokePolygon(new double[]{a.getX(), b.getX(), c.getX()},
-                new double[]{a.getY(), b.getY(), c.getY()},
-                3);
     }
 }
