@@ -4,7 +4,6 @@ import io.hostilerobot.ceramicrelief.controller.DataController;
 import io.hostilerobot.ceramicrelief.controller.JsonDataProcessor;
 import io.hostilerobot.ceramicrelief.controller.TextControllerDirectory;
 import io.hostilerobot.ceramicrelief.controller.TextControllerMatcher;
-import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangle2D;
 import javafx.application.Application;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
