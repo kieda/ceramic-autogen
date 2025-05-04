@@ -195,14 +195,13 @@ public class Triangle2D implements Rectangle {
     private static boolean inRangeExclusive(double d) { return EPSILON < d && d < 1.0 - EPSILON; }
     @Override
     public boolean intersects(Rectangle rectangle) {
-        if(rectangle instanceof Triangle2D) {
+        if(rectangle instanceof Triangle2D triangle) {
             // idea: new added point is C. existing points are at A and B that coincide with a face.
             // triangle can be described as triangle = C + (A - C) * u + (B - C) * v
             // if there is an intersecion, there will be one where u = 0 or when v = 0
             // existing triangle RST can be triangle can be described as existing = R + (S - R) * s + (T - R) * t
             // or existing = S + (R - S) * r + (T - S) * t; or existing = T + (R - T) * r + (S - T) * s
 
-            Triangle2D triangle = (Triangle2D) rectangle;
             // check lines for intersection
             int sourceCount = (this.precomputedVals.length - LENGTHS_OFFSET) / LENGTHS_COUNT;
             int targetCount = (triangle.precomputedVals.length - LENGTHS_OFFSET) / LENGTHS_COUNT;

@@ -2,8 +2,12 @@ package io.hostilerobot.ceramicrelief.drivers.rtee;
 
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
+import javafx.beans.value.ObservableDoubleValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.Event;
+import javafx.event.EventHandler;
+import javafx.event.EventTarget;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.paint.Color;
@@ -25,7 +29,6 @@ public class TriangleMeshView extends Group {
 
     private ObservableList<TriangleView> triangleViews = FXCollections.observableArrayList();
     private ObjectProperty<SelectedVertexInfo> selected = new SimpleObjectProperty<>(null);
-
 
     public ObservableList<TriangleView> getTriangleViews() {
         return triangleViews;
@@ -91,8 +94,18 @@ public class TriangleMeshView extends Group {
 
         this.getChildren().add(triangles);
         this.getChildren().add(selectedCircle);
+
+        selectedCircle.centerXProperty().subscribe(() -> Event.fireEvent(this, new TriangleChangedEvent()));
+        selectedCircle.centerYProperty().subscribe(() -> Event.fireEvent(this, new TriangleChangedEvent()));
+        triangleViews.subscribe(() -> Event.fireEvent(this, new TriangleChangedEvent()));
     }
 
+    public void addTriangleEventHandler(EventHandler<TriangleChangedEvent> handler) {
+        addEventHandler(TriangleChangedEvent.TRIANGLE_CHANGED, handler);
+    }
+    public void removeTriangleEventHandler(EventHandler<TriangleChangedEvent> handler) {
+        removeEventHandler(TriangleChangedEvent.TRIANGLE_CHANGED, handler);
+    }
 
     public void drag(double pointX, double pointY) {
         if(!selectedCircle.isDisable()) {

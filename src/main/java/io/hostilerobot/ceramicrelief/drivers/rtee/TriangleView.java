@@ -1,8 +1,11 @@
 package io.hostilerobot.ceramicrelief.drivers.rtee;
 
 import javafx.beans.property.*;
+import javafx.geometry.BoundingBox;
+import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.StrokeLineJoin;
 import javafx.scene.shape.StrokeType;
@@ -12,19 +15,63 @@ import java.util.function.Consumer;
 
 public class TriangleView extends Polygon {
     private BooleanProperty selected = new SimpleBooleanProperty(false);
-    private void selectedStyle() {
-        strokeWidthProperty().set(4);
-        setStroke(Color.FIREBRICK);
+    private BooleanProperty intersected = new SimpleBooleanProperty(false);
+
+    public double getMinX() {
+        double min = getVertex(A).getX();
+        if(getVertex(B).getX() < min) min = getVertex(B).getX();
+        if(getVertex(C).getX() < min) min = getVertex(C).getX();
+        return min;
     }
-    private void unselectedStyle() {
-        strokeWidthProperty().set(2);
-        setStroke(Color.DARKSLATEBLUE);
+    public double getMinY() {
+        double min = getVertex(A).getY();
+        if(getVertex(B).getY() < min) min = getVertex(B).getY();
+        if(getVertex(C).getY() < min) min = getVertex(C).getY();
+        return min;
+    }
+    public double getMaxX() {
+        double max = getVertex(A).getX();
+        if(getVertex(B).getX() > max) max = getVertex(B).getX();
+        if(getVertex(C).getX() > max) max = getVertex(C).getX();
+        return max;
+    }
+    public double getMaxY() {
+        double max = getVertex(A).getY();
+        if(getVertex(B).getY() > max) max = getVertex(B).getY();
+        if(getVertex(C).getY() > max) max = getVertex(C).getY();
+        return max;
+    }
+
+
+    private void setStyle(boolean intersected, boolean selected) {
+        Paint stroke;
+        if(selected) {
+            strokeWidthProperty().set(4);
+            stroke = Color.FIREBRICK;
+        } else {
+            strokeWidthProperty().set(2);
+            stroke = Color.DARKSLATEBLUE;
+        }
+
+        if(intersected) {
+            stroke = Color.RED;
+            if(getStrokeDashArray().isEmpty())
+                getStrokeDashArray().add(5d);
+        } else if(!getStrokeDashArray().isEmpty()){
+            getStrokeDashArray().clear();
+        }
+        setStroke(stroke);
     }
 
     private final static int STRIDE = 2;
     public final static int A = 0;
     public final static int B = 1;
     public final static int C = 2;
+
+    public Point2D getVertex(int vertex) {
+        return new Point2D(getVertexPositionXProperty(vertex).get(),
+                getVertexPositionYProperty(vertex).get());
+    }
 
     /**
      * does a calculation to see which vertices of this triangle are within epsilon distance of pointX, pointY
@@ -100,21 +147,21 @@ public class TriangleView extends Polygon {
         vertexCXProperty.subscribe(vertexSubscriptionX(C));
         vertexCYProperty.subscribe(vertexSubscriptionY(C));
 
-        unselectedStyle();
+        setStyle(false, false);
         selected.subscribe(selected -> {
-            if(selected) {
-                selectedStyle();
-            } else{
-                unselectedStyle();
-                // we don't set selectedVertex in the other direction - we keep this around
-                // so clicking through items will produce a newly selected vertex
-            }
+            setStyle(intersected.get(), selected);
+        });
+        intersected.subscribe(intersected -> {
+            setStyle(intersected, selected.get());
         });
     }
 
 
     public BooleanProperty isSelectedProperty() {
         return selected;
+    }
+    public BooleanProperty isIntersectedProperty() {
+        return intersected;
     }
 
     public DoubleProperty getVertexPositionXProperty(int vertex) {

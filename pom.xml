@@ -45,6 +45,11 @@
             <artifactId>javafx-controls</artifactId>
             <version>${org.openjfx.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>${org.openjfx.version}</version>
+        </dependency>
         <!-- JGraphT -->
         <dependency>
             <groupId>org.jgrapht</groupId>
