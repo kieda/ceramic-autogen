@@ -7,6 +7,10 @@ import javafx.geometry.Point2D;
 
 import java.awt.geom.Line2D;
 
+
+/**
+ * stupid, stable, slow triangle triangle intersection
+ */
 public class Triangle2DX implements Rectangle {
 
     private final Point2D a, b, c;

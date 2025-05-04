@@ -8,6 +8,7 @@ import io.hostilerobot.ceramicrelief.qmesh.QMesh;
 import io.hostilerobot.ceramicrelief.qmesh.QMeshEdge;
 import io.hostilerobot.ceramicrelief.qmesh.QMeshFace;
 import io.hostilerobot.ceramicrelief.qmesh.QVertex3D;
+import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangle2DY;
 import io.hostilerobot.ceramicrelief.texture.projection.FaceMappingInfo;
 import io.hostilerobot.ceramicrelief.texture.projection.ProjectionState;
 import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangle2D;
@@ -290,7 +291,7 @@ public class DFSMeshPartitionTraversal implements MeshPartitionTraversal {
         ProjectedTextureInfo result = new ProjectedTextureInfo();
         // way to test for intersection among 3d triangles in a 2d plane
         // start with an empty intersection test each time we begin traversing the mesh.
-        RTree<TFace, Triangle2D> intersectionTest = RTree.create();
+        RTree<TFace, Triangle2DY> intersectionTest = RTree.create();
         PairingHeap<HeapOrder, HeapElem> heap = new PairingHeap<>(HEAP_ORDER_COMPARATOR);
         Graph<Integer, QMeshEdge> connectivity = backingMesh.getMeshConnectivity();
 
@@ -438,9 +439,10 @@ public class DFSMeshPartitionTraversal implements MeshPartitionTraversal {
                 }
             }
 
-            Triangle2D newTriangle = new Triangle2D(insertedPoint, p1, p2, p3);
+            Triangle2DY newTriangle = new Triangle2DY(//insertedPoint,
+                    p1, p2, p3);
 
-            Iterable<Entry<TFace, Triangle2D>> entries = SearchRTree.search(intersectionTest, newTriangle);
+            Iterable<Entry<TFace, Triangle2DY>> entries = SearchRTree.search(intersectionTest, newTriangle);
             if(entries.iterator().hasNext()) {
                 // there is an intersection with the new triangle we're attempting to place down
                 // (we don't exactly care with what triangle)

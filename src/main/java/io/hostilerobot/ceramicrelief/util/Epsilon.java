@@ -26,4 +26,24 @@ public final class Epsilon {
         double difference = d2 - d1;
         return difference * difference <= epsilonSq();
     }
+    public static boolean isZero(double d1) {
+        return d1 * d1 <= epsilonSq();
+    }
+
+    // true if d1 < v
+    public static boolean lessThanZeroExclusive(double d1) {
+        return d1 < -epsilon;
+    }
+    public static boolean lessThanZeroInclusive(double d1) {
+        return d1 <= epsilon;
+    }
+    public static boolean greaterThanOneInclusive(double d1) {
+        return d1 >= 1.0 - epsilon;
+    }
+    public static boolean betweenZeroOneExclusive(double d) {
+        return epsilon < d && d < 1.0 - epsilon;
+    }
+    public static boolean betweenZeroOneInclusive(double d) {
+        return -epsilon <= d && d <= 1.0 + epsilon;
+    }
 }

@@ -2,6 +2,7 @@ package io.hostilerobot.ceramicrelief.drivers.rtee;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.davidmoten.rtree2.Entry;
+import com.github.davidmoten.rtree2.Iterables;
 import com.github.davidmoten.rtree2.RTree;
 import io.hostilerobot.ceramicrelief.controller.DataController;
 import io.hostilerobot.ceramicrelief.controller.JsonDataProcessor;
@@ -11,6 +12,7 @@ import io.hostilerobot.ceramicrelief.texture.TFace;
 import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.SearchRTree;
 import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangle2D;
 import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangle2DX;
+import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangle2DY;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
@@ -31,8 +33,6 @@ public class RTreeTest extends Application {
     }
 
     private AtomicBoolean shutdown = new AtomicBoolean(false);
-
-
 
     private void fileControllerThread() throws Exception{
         var resource = getClass().getResource("/controller/").getPath();
@@ -77,23 +77,23 @@ public class RTreeTest extends Application {
 
 
     private void testRTree(boolean debug) {
-        RTree<TriangleView, Triangle2DX> tree = RTree.create();
+        RTree<TriangleView, Triangle2DY> tree = RTree.create();
         if(debug) {
             System.out.println("debugging");
         }
         for(TriangleView triangle : root.getTriangleViews()) {
-            Triangle2DX insertionTriangle = new Triangle2DX(
+            Triangle2DY insertionTriangle = new Triangle2DY(
                 triangle.getVertex(TriangleView.A),
                 triangle.getVertex(TriangleView.B),
                 triangle.getVertex(TriangleView.C)
             );
 
-            Iterable<Entry<TriangleView, Triangle2DX>> entries = SearchRTree.search(tree, insertionTriangle);
+            Iterable<Entry<TriangleView, Triangle2DY>> entries = SearchRTree.search(tree, insertionTriangle);
             if(entries.iterator().hasNext()) {
                 // there is an intersection with the new triangle we're attempting to place down
 
                 triangle.isIntersectedProperty().set(true);
-
+//                System.out.println(triangle + " intersects with " + Iterables.toList(entries));
 //                continue;
             } else {
                 triangle.isIntersectedProperty().set(false);

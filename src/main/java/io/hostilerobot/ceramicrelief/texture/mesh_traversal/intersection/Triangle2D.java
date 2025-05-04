@@ -217,8 +217,8 @@ public class Triangle2D implements Rectangle {
                     double sourceToDestX = this.precomputedVals[targetStartPos + VAL_POS_SOURCE_X] - sourcePosX;
                     double sourceToDestY = this.precomputedVals[targetStartPos + VAL_POS_SOURCE_Y] - sourcePosY;
 
-                    double targetLenX = triangle.precomputedVals[targetStartPos];
-                    double targetLenY = triangle.precomputedVals[targetStartPos];
+                    double targetLenX = triangle.precomputedVals[targetStartPos + VAL_LEN_X];
+                    double targetLenY = triangle.precomputedVals[targetStartPos + VAL_LEN_Y];
                     double denominator = (targetLenX * sourceLenY - targetLenY * sourceLenX);
                     if (FastMath.abs(denominator) < EPSILON) // lines are parallel
                         continue;

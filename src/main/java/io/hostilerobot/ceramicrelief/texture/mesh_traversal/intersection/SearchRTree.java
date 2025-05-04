@@ -15,7 +15,7 @@ public final class SearchRTree {
     // for some reason this isn't exposed >.<
     // we expose it so we can just search triangles directly
 
-    private static Predicate<? super Geometry> test(Triangle2D triangle) {
+    private static Predicate<? super Geometry> test(Triangle2DY triangle) {
         return geom -> {
             if(geom instanceof Rectangle) {
                 return triangle.intersects((Rectangle)geom);
@@ -42,7 +42,7 @@ public final class SearchRTree {
             throw new ExceptionInInitializerError(e);
         }
     }
-    public static <T, S extends Geometry> Iterable<Entry<T, S>> search(RTree<T, S> tree, Triangle2D triangle) {
+    public static <T, S extends Geometry> Iterable<Entry<T, S>> search(RTree<T, S> tree, Triangle2DY triangle) {
         // execute a search such that we test the triangle intersecting against the geometry in place.
         // will allow us to reduce the search space faster by checking if the triangle intersects with the geometry
         // rather than getting all possible intersections with the triangles bounds and filtering from there
