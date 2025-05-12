@@ -149,7 +149,7 @@ public class QMesh {
     public QVertex3D getNormal(int face) {
         QVertex3D normal;
 
-        if ((normal = normals.get(face)) != null) {
+        if (face < normals.size() && (normal = normals.get(face)) != null) {
             return normal;
         } else {
             QMeshFace meshFace = getFace(face);
@@ -161,6 +161,8 @@ public class QMesh {
             QVertex3D.subtract(vertex2, getVertex(meshFace.getV1()), len12);
             QVertex3D.subtract(getVertex(meshFace.getV3()), vertex2, len23);
             QVertex3D.cross(len12, len23, len23);
+            expandToIdx(normals, face);
+            normals.set(face, len23);
             return len23;
         }
     }
@@ -172,24 +174,10 @@ public class QMesh {
         vertices.get(id).set(x, y, z);
         return true;
     }
-    public boolean setVertex(int id, QVertex3D vert) {
-        if(!validVertex(id)) {
-            return false;
-        }
-        vertices.set(id, vert);
-        return true;
-    }
 
     public int addVertex(double x, double y, double z) {
-        return addVertex(new QVertex3D(x, y, z));
-    }
-
-    public int addVertex(QVertex3D vertex) {
-        if(edgeConnectivity == null) {
-            throw new IllegalStateException("Cannot add new vertices to an IMesh that has been cleaned");
-        }
         int idx = vertexCount();
-        vertices.add(vertex);
+        vertices.add(new QVertex3D(x, y, z));
         return idx;
     }
 
@@ -200,14 +188,11 @@ public class QMesh {
      * @return id for the new triangle
      */
     public int addTriangle(int v1, int v2, int v3) {
-        if(edgeConnectivity == null) {
-            throw new IllegalStateException("Cannot add a new triangle to an IMesh that has been cleaned");
-        }
         if(!validVertex(v1) || !validVertex(v2) || !validVertex(v3)) {
             throw new NoSuchElementException("Mesh does not contain all vertices (" + v1 + ", " + v2 + ", " + v3 + ")");
         }
         final int idx = faceCount();
-        faces.add(new QMeshFace(idx, v1, v2, v3));
+        faces.add(new QMeshFace(v1, v2, v3));
         meshConnectivity.addVertex(idx); // add a vertex for the face.
 
         BiFunction<CMeshEdge, Set<Integer>, Set<Integer>> addFaceFn = (edge, faces) -> {
@@ -241,10 +226,7 @@ public class QMesh {
         return idx;
     }
 
-    public void clean() {
-        edgeCache.clear();
-        edgeCache = null;
-        edgeConnectivity.clear();
-        edgeConnectivity = null;
+    public void setVertices(List<QVertex3D> vertices, List<QMeshFace> faces) {
+        // todo
     }
 }

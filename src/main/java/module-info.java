@@ -11,4 +11,5 @@ module ceramic.autogen {
 
     exports io.hostilerobot.ceramicrelief.drivers;
     exports io.hostilerobot.ceramicrelief.drivers.rtee;
+    exports io.hostilerobot.ceramicrelief.drivers.dfsmeshprojection;
 }

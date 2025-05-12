@@ -10,12 +10,18 @@ import java.util.List;
 
 /**
  * represents the resulting data of projecting a mesh to a texture
+ *
+ * has the following:
+ *      tVertices: 2d vertices on the plane
+ *      tFaces: A set of triangles, each formed by 3 indices in tVertices for their actual location
+ *      faceMapping: information on which faces in 3d correspond to which faces in 2d
+ *      textureConnections: graph describing which faces are adjacent in 3d (even if they might not be adjacent in 2d)
  */
 public class MeshProjectionResult {
-    private List<TFace> tFaces;
-    private List<Point2D> tVertices;
-    private FaceMappingInfo faceMapping;
-    private Graph<TFace, EdgeInfo> textureConnections;
+    private final List<TFace> tFaces;
+    private final List<Point2D> tVertices;
+    private final FaceMappingInfo faceMapping;
+    private final Graph<TFace, EdgeInfo> textureConnections;
 
     public MeshProjectionResult(int faceCount, int vertexCount) {
         tFaces = new ArrayList<>(faceCount);

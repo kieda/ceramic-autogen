@@ -15,6 +15,10 @@ import javafx.geometry.Point2D;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * represents a projection strategy that projects a 3d mesh into 2d by using separate components.
+ * It projects some disjoint subset of the mesh, then finally combines them into one holistic plane using box packing
+ */
 public class DisjointMeshProjectionStrategy implements MeshProjectionStrategy{
     private final PartitionedMeshTraversal projectAllFaces;
     private final BoxPacker2D packBoxes;

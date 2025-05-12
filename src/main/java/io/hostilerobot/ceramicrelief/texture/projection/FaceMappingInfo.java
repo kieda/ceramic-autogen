@@ -2,6 +2,10 @@ package io.hostilerobot.ceramicrelief.texture.projection;
 
 import java.util.Arrays;
 
+/**
+ * Just a very simple mapping going from the 3d mesh ID -> 2d texture face ID
+ * Mapping should be contiguous starting from 0
+ */
 public class FaceMappingInfo {
     private final int[] tFaces;
     public FaceMappingInfo(int size) {

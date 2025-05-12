@@ -1,18 +1,17 @@
 package io.hostilerobot.ceramicrelief.drivers.rtee;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.github.davidmoten.rtree2.Entry;
 import com.github.davidmoten.rtree2.RTree;
 import io.hostilerobot.ceramicrelief.controller.DataController;
 import io.hostilerobot.ceramicrelief.controller.JsonDataProcessor;
 import io.hostilerobot.ceramicrelief.controller.TextControllerDirectory;
 import io.hostilerobot.ceramicrelief.controller.TextControllerMatcher;
+import io.hostilerobot.ceramicrelief.drivers.serialization.Triangle2Deserializer;
 import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.SearchRTree;
 import io.hostilerobot.ceramicrelief.texture.mesh_traversal.intersection.Triangle2D;
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
-import javafx.geometry.Point2D;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -34,28 +33,17 @@ public class RTreeTest extends Application {
         var resource = getClass().getResource("/controller/").getPath();
         // hacky bullshit so we can get the right file
         resource = resource.replace("/target/classes/", "/src/main/resources/");
+
+        SimpleModule module = new SimpleModule();
+        module.addDeserializer(TriangleMeshView.class, new Triangle2Deserializer());
+        JsonDataProcessor.registerModule(module);
+
         TextControllerDirectory.builder()
                 .and(TextControllerMatcher.nameAndExtension("rtree_test", "json"), f ->
                         DataController.builder(
                                 root,
                                 JsonDataProcessor.builder(TriangleMeshView.class)
                                         .extractFunction(jsonNode -> jsonNode.get("triangles"))
-                                        .customMerging((triangleMesh, jsonNode) ->{
-                                            TriangleView[] items = new TriangleView[jsonNode.size()/3];
-
-                                            for(int i = 0; i < jsonNode.size()-2; i+=3) {
-                                                JsonNode a = jsonNode.get(i);
-                                                JsonNode b = jsonNode.get(i + 1);
-                                                JsonNode c = jsonNode.get(i + 2);
-                                                items[i / 3] = new TriangleView(
-                                                    new Point2D(a.get(0).asDouble(), a.get(1).asDouble()),
-                                                    new Point2D(b.get(0).asDouble(), b.get(1).asDouble()),
-                                                    new Point2D(c.get(0).asDouble(), c.get(1).asDouble())
-                                                );
-                                            }
-
-                                            Platform.runLater(() -> triangleMesh.getTriangleViews().setAll(items));
-                                        })
                                         .build()
                                 )
                                 .addListener( System.out::println )

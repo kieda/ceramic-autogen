@@ -19,11 +19,6 @@ public class QVertex3D {
         this.z = 0;
     }
 
-    public QVertex3D(QVertex3D other) {
-        this.x = other.x;
-        this.y = other.y;
-        this.z = other.z;
-    }
     public QVertex3D(double x, double y, double z) {
         this.x = x;
         this.y = y;
